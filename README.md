@@ -8,6 +8,7 @@
 ## ✨ Features
 
 ### 📝 **Core Tools**
+
 - **Text Boxes** - Add notes, labels, and calculations
 - **Shapes** - Rectangles, circles, and lines for technical drawings
 - **Graphs** - XY coordinate systems and 1st-quadrant graphs with axis labels
@@ -15,6 +16,7 @@
 - **Freehand Drawing** - Sketch and annotate with pen tool
 
 ### 🎨 **Engineering Paper Aesthetic**
+
 - Classic green graph paper look
 - Major and minor grid lines
 - Three-ring binder holes
@@ -22,11 +24,13 @@
 - "Page X" indicators
 
 ### 📄 **Multi-Page Projects**
+
 - Add/remove pages as needed
 - Each page is a full engineering paper sheet
 - Scroll through pages seamlessly
 
 ### 🔧 **Productivity Features**
+
 - **Undo/Redo** - Full history tracking (Ctrl+Z / Ctrl+Y)
 - **Snap to Grid** - Align elements to grid for precision
 - **Zoom Controls** - Scale the canvas (pinch-to-zoom on mobile)
@@ -34,12 +38,14 @@
 - **Delete Elements** - Select and remove with Delete/Backspace key
 
 ### 💾 **Project Management**
+
 - **Save/Load** - Export projects as `.engpaper.json` files
 - **Auto-save** - Local storage backup (never lose your work)
 - **Export PDF** - Generate professional PDFs of your work
 - **Share Links** - Create shareable URLs (images excluded for privacy)
 
 ### 📱 **Mobile-First Design**
+
 - Responsive layout optimized for tablets and phones
 - Touch-friendly controls
 - Floating tools button for easy access
@@ -95,6 +101,7 @@ Visit `http://localhost:3000`
 ## 📖 How to Use
 
 ### Desktop
+
 1. **Add Elements** - Use toolbar buttons for text, shapes, graphs, and images
 2. **Draw Mode** - Click "Draw" button to enable freehand sketching
 3. **Edit** - Click elements to select, drag to move, corners to resize
@@ -102,6 +109,7 @@ Visit `http://localhost:3000`
 5. **Export** - Click "Export PDF" to save your work
 
 ### Mobile
+
 1. **Tools Menu** - Tap the green wrench button (bottom-left)
 2. **Add Pages** - Use +/- buttons on the zoom controls (bottom-right)
 3. **Undo/Redo** - Buttons in the top toolbar
