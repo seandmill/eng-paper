@@ -165,7 +165,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       <div className="flex items-center gap-2">
         {/* Logo + Title */}
         <div className="flex items-center gap-2 pr-2 lg:pr-4 lg:border-r lg:border-slate-300 lg:mr-2">
-          <div className="w-8 h-8 bg-green-700 rounded-sm flex items-center justify-center text-white font-serif italic text-lg font-bold">E</div>
+          <img src="/assets/images/eng_paper_logo.png" alt="Eng.Paper" className="w-8 h-8 rounded-sm" />
           <input
             type="text"
             value={fileName}

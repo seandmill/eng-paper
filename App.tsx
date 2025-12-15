@@ -1022,16 +1022,24 @@ function App() {
                   const isActive = page.id === activePageId;
 
                   return (
-                    <div 
+                    <div
                         key={page.id}
+                        style={{
+                            width: PAGE_WIDTH * scale,
+                            height: PAGE_HEIGHT * scale,
+                            position: 'relative',
+                            flexShrink: 0
+                        }}
+                    >
+                      <div
                         id={`engineering-paper-page-${page.id}`}
                         ref={(el) => {
                             if (el) pageRefs.current.set(page.id, el);
                             else pageRefs.current.delete(page.id);
                         }}
-                        className={`relative shadow-2xl bg-[#f4f9f4] overflow-hidden origin-top-left flex-shrink-0 transition-shadow duration-200`}
-                        style={{ 
-                            width: PAGE_WIDTH, 
+                        className={`relative shadow-2xl bg-[#f4f9f4] overflow-hidden origin-top-left transition-shadow duration-200`}
+                        style={{
+                            width: PAGE_WIDTH,
                             height: PAGE_HEIGHT,
                             transform: `scale(${scale})`,
                             // We don't want the pages themselves to move with transform origin, we let flex gap handle layout
@@ -1145,6 +1153,7 @@ function App() {
                             onPointerUp={handlePointerUpMarkup}
                             onPointerLeave={handlePointerUpMarkup}
                         />
+                      </div>
                     </div>
                   );
               })}
