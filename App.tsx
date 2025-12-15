@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import LZString from 'lz-string';
 import { CanvasElement, ElementType, SelectionState, Page, ProjectFile } from './types';
 import Toolbar from './components/Toolbar';
 import PropertyPanel from './components/PropertyPanel';
@@ -153,6 +154,54 @@ function App() {
 
     return () => clearTimeout(timeoutId);
   }, [elements, pages, scale, snapToGrid, markupData, fileName]);
+
+  // --- Load Shared Project from URL ---
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#shared=')) {
+      try {
+        const compressed = hash.substring(8); // Remove '#shared='
+        const jsonString = LZString.decompressFromEncodedURIComponent(compressed);
+
+        if (jsonString) {
+          const project: ProjectFile = JSON.parse(jsonString);
+
+          // Basic validation
+          if (!project.pages || !project.elements) {
+            throw new Error("Invalid shared project structure");
+          }
+
+          // Load the shared project
+          setPages(project.pages);
+          setElements(project.elements);
+          setMarkupData(project.markupData || {});
+          setSnapToGrid(project.snapToGrid ?? false);
+          setScale(project.scale || 1);
+
+          if (project.metadata?.fileName) {
+            setFileName(project.metadata.fileName + ' (Copy)');
+          }
+
+          // Set Active Page to first page
+          if (project.pages.length > 0) {
+            setActivePageId(project.pages[0].id);
+          }
+
+          // Clear the hash to prevent reloading
+          window.history.replaceState(null, '', window.location.pathname);
+
+          // Show success message
+          setTimeout(() => {
+            alert('Shared project loaded successfully! This is your own copy.');
+          }, 100);
+        }
+      } catch (err) {
+        console.error('Failed to load shared project:', err);
+        alert('Failed to load shared project. The link may be invalid or corrupted.');
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    }
+  }, []); // Run once on mount
 
   // --- Load Initial Markup for ALL pages ---
   useEffect(() => {
@@ -326,6 +375,43 @@ function App() {
           }
       };
       reader.readAsText(file);
+  };
+
+  const handleShareProject = () => {
+      try {
+          const project: ProjectFile = {
+              version: "1.0",
+              metadata: {
+                  fileName: fileName,
+                  createdAt: Date.now(),
+                  lastModified: Date.now()
+              },
+              pages,
+              elements,
+              markupData,
+              snapToGrid,
+              scale
+          };
+
+          // Compress and encode the project data
+          const jsonString = JSON.stringify(project);
+          const compressed = LZString.compressToEncodedURIComponent(jsonString);
+
+          // Create shareable URL
+          const baseUrl = window.location.origin + window.location.pathname;
+          const shareUrl = `${baseUrl}#shared=${compressed}`;
+
+          // Copy to clipboard
+          navigator.clipboard.writeText(shareUrl).then(() => {
+              alert('Share link copied to clipboard! Anyone with this link can open a copy of your project.');
+          }).catch(() => {
+              // Fallback if clipboard API fails
+              prompt('Copy this link to share your project:', shareUrl);
+          });
+      } catch (err) {
+          console.error('Failed to create share link:', err);
+          alert('Failed to create share link. The project might be too large.');
+      }
   };
 
   // --- Handlers ---
@@ -854,15 +940,15 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] overflow-hidden bg-slate-200 select-none">
-      <Toolbar 
-        onAddElement={handleAddElement} 
+      <Toolbar
+        onAddElement={handleAddElement}
         onAddImage={handleAddImage}
         onAddPage={handleAddPage}
         onRemovePage={handleRemovePageTrigger}
         canRemovePage={pages.length > 1}
-        onExport={handleExport} 
+        onExport={handleExport}
         onDelete={handleDelete}
-        hasSelection={!!selection.id} 
+        hasSelection={!!selection.id}
         snapToGrid={snapToGrid}
         onToggleSnap={() => setSnapToGrid(!snapToGrid)}
         onUndo={handleUndo}
@@ -873,6 +959,7 @@ function App() {
         onToggleMarkup={handleToggleMarkup}
         onSaveProject={handleSaveProject}
         onLoadProject={handleLoadProject}
+        onShareProject={handleShareProject}
         fileName={fileName}
         onFileNameChange={setFileName}
       />
@@ -1069,6 +1156,7 @@ function App() {
               onToggleMarkup={handleToggleMarkup}
               onSaveProject={handleSaveProject}
               onLoadProject={handleLoadProject}
+              onShareProject={handleShareProject}
         />
 
         {/* Delete Confirmation Modal */}

@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { 
-  Type, 
-  Square, 
-  Circle, 
-  Minus, 
-  Download, 
-  Trash2, 
+import {
+  Type,
+  Square,
+  Circle,
+  Minus,
+  Download,
+  Trash2,
   Grid3x3,
   Undo2,
   Redo2,
@@ -20,7 +20,8 @@ import {
   FilePlus,
   FileMinus,
   Save,
-  FolderOpen
+  FolderOpen,
+  Share2
 } from 'lucide-react';
 import { ElementType } from '../types';
 
@@ -44,18 +45,19 @@ interface ToolbarProps {
   // Project Management
   onSaveProject: () => void;
   onLoadProject: (file: File) => void;
+  onShareProject: () => void;
   fileName: string;
   onFileNameChange: (name: string) => void;
 }
 
-const Toolbar: React.FC<ToolbarProps> = ({ 
-  onAddElement, 
+const Toolbar: React.FC<ToolbarProps> = ({
+  onAddElement,
   onAddImage,
   onAddPage,
   onRemovePage,
   canRemovePage,
-  onExport, 
-  onDelete, 
+  onExport,
+  onDelete,
   hasSelection,
   snapToGrid,
   onToggleSnap,
@@ -67,6 +69,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onToggleMarkup,
   onSaveProject,
   onLoadProject,
+  onShareProject,
   fileName,
   onFileNameChange
 }) => {
@@ -188,10 +191,19 @@ const Toolbar: React.FC<ToolbarProps> = ({
           <button
               onClick={onSaveProject}
               className={desktopBtnClass}
-              title="Save Project (.engpaper)"
+              title="Save Project (.engpaper.json)"
           >
             <Save size={20} />
             <span className={desktopLabelClass}>Save</span>
+          </button>
+
+          <button
+              onClick={onShareProject}
+              className={desktopBtnClass}
+              title="Share Project Link"
+          >
+            <Share2 size={20} />
+            <span className={desktopLabelClass}>Share</span>
           </button>
 
           <div className="w-px h-8 bg-slate-300 mx-1"></div>

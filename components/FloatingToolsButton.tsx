@@ -13,7 +13,8 @@ import {
   Trash2,
   Download,
   Save,
-  FolderOpen
+  FolderOpen,
+  Share2
 } from 'lucide-react';
 import { ElementType } from '../types';
 
@@ -29,6 +30,7 @@ interface FloatingToolsButtonProps {
   onToggleMarkup: () => void;
   onSaveProject: () => void;
   onLoadProject: (file: File) => void;
+  onShareProject: () => void;
 }
 
 const FloatingToolsButton: React.FC<FloatingToolsButtonProps> = ({
@@ -42,7 +44,8 @@ const FloatingToolsButton: React.FC<FloatingToolsButtonProps> = ({
   isMarkupMode,
   onToggleMarkup,
   onSaveProject,
-  onLoadProject
+  onLoadProject,
+  onShareProject
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -129,12 +132,17 @@ const FloatingToolsButton: React.FC<FloatingToolsButtonProps> = ({
 
           <div className="absolute bottom-24 left-6 w-64 bg-white shadow-xl border border-slate-200 z-50 flex flex-col p-2 rounded-lg max-h-[70vh] overflow-y-auto">
             {/* File Operations */}
-            <div className="flex gap-2 mb-2 pb-2 border-b border-slate-100">
-              <button onClick={() => handleAction(triggerProjectLoad)} className={`flex-1 ${btnClass} justify-center bg-slate-50`}>
-                <FolderOpen size={18} /> <span className="text-sm font-medium">Open</span>
-              </button>
-              <button onClick={() => handleAction(onSaveProject)} className={`flex-1 ${btnClass} justify-center bg-slate-50`}>
-                <Save size={18} /> <span className="text-sm font-medium">Save</span>
+            <div className="flex flex-col gap-2 mb-2 pb-2 border-b border-slate-100">
+              <div className="flex gap-2">
+                <button onClick={() => handleAction(triggerProjectLoad)} className={`flex-1 ${btnClass} justify-center bg-slate-50`}>
+                  <FolderOpen size={18} /> <span className="text-sm font-medium">Open</span>
+                </button>
+                <button onClick={() => handleAction(onSaveProject)} className={`flex-1 ${btnClass} justify-center bg-slate-50`}>
+                  <Save size={18} /> <span className="text-sm font-medium">Save</span>
+                </button>
+              </div>
+              <button onClick={() => handleAction(onShareProject)} className={`${btnClass} justify-center bg-green-50 text-green-700 font-semibold`}>
+                <Share2 size={18} /> <span className="text-sm font-medium">Share Link</span>
               </button>
             </div>
 
