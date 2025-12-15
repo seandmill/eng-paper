@@ -1,0 +1,5 @@
+{
+  "name": "Engineering Paper Studio",
+  "description": "A precision text and shape editor styled like classic engineering graph paper. supports free-form layout and PDF export.",
+  "requestFramePermissions": []
+}
