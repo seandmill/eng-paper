@@ -160,10 +160,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
       {/* Left Side: Logo + File Controls */}
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 pr-4 border-r border-slate-300 mr-2">
+        {/* Logo - Always visible */}
+        <div className="flex items-center gap-2 pr-4 border-r border-slate-300 mr-2 md:mr-0 md:border-r-0 md:pr-2">
           <div className="w-8 h-8 bg-green-700 rounded-sm flex items-center justify-center text-white font-serif italic text-lg font-bold">E</div>
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={fileName}
             onChange={(e) => onFileNameChange(e.target.value)}
             className="hidden lg:block w-40 text-sm font-semibold text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-green-600 outline-none bg-transparent px-1 truncate transition-colors"
@@ -172,118 +173,121 @@ const Toolbar: React.FC<ToolbarProps> = ({
           />
         </div>
 
-        {/* File Operations */}
-        <button 
-            onClick={triggerProjectLoad}
-            className={desktopBtnClass}
-            title="Open Project"
-        >
-          <FolderOpen size={20} />
-          <span className={desktopLabelClass}>Open</span>
-        </button>
-
-        <button 
-            onClick={onSaveProject}
-            className={desktopBtnClass}
-            title="Save Project (.engpaper)"
-        >
-          <Save size={20} />
-          <span className={desktopLabelClass}>Save</span>
-        </button>
-
-        <div className="w-px h-8 bg-slate-300 mx-1 hidden sm:block"></div>
-
-        {/* Text Tool */}
-        <button 
-            onClick={() => { if(!isMarkupMode) handleAdd(ElementType.TEXT); }} 
-            disabled={isMarkupMode}
-            className={desktopBtnClass}
-        >
-          <Type size={20} />
-          <span className={desktopLabelClass}>Text</span>
-        </button>
-
-        {/* Image Tool */}
-        <button 
-            onClick={() => { if(!isMarkupMode) triggerImageUpload(); }} 
-            disabled={isMarkupMode}
-            className={desktopBtnClass}
-        >
-          <ImageIcon size={20} />
-          <span className={desktopLabelClass}>Image</span>
-        </button>
-        
-        <div className="w-px h-8 bg-slate-300 mx-1 hidden sm:block"></div>
-
-        {/* Shapes Dropdown */}
-        <div className="relative">
-          <button 
-            onClick={() => !isMarkupMode && toggleDropdown('shapes')}
-            disabled={isMarkupMode}
-            className={`${desktopBtnClass} ${activeDropdown === 'shapes' ? 'bg-slate-200' : ''}`}
+        {/* Desktop-only toolbar buttons */}
+        <div className="hidden md:flex items-center gap-2 border-l border-slate-300 pl-2">
+          {/* File Operations */}
+          <button
+              onClick={triggerProjectLoad}
+              className={desktopBtnClass}
+              title="Open Project"
           >
-            <Shapes size={20} />
-            <span className={`${desktopLabelClass} flex items-center gap-0.5`}>
-              Shapes <ChevronDown size={8} />
-            </span>
+            <FolderOpen size={20} />
+            <span className={desktopLabelClass}>Open</span>
           </button>
-          
-          {activeDropdown === 'shapes' && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={closeDropdown} />
-              <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-lg p-1 flex flex-col gap-1 min-w-[140px] z-50">
-                <button onClick={() => handleAdd(ElementType.RECTANGLE)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
-                  <Square size={16} /> <span className="text-sm font-medium">Box</span>
-                </button>
-                <button onClick={() => handleAdd(ElementType.CIRCLE)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
-                  <Circle size={16} /> <span className="text-sm font-medium">Circle</span>
-                </button>
-                <button onClick={() => handleAdd(ElementType.LINE)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
-                  <Minus size={16} /> <span className="text-sm font-medium">Line</span>
-                </button>
-              </div>
-            </>
-          )}
-        </div>
 
-        {/* Graphs Dropdown */}
-        <div className="relative">
-          <button 
-            onClick={() => !isMarkupMode && toggleDropdown('graphs')}
-            disabled={isMarkupMode}
-            className={`${desktopBtnClass} ${activeDropdown === 'graphs' ? 'bg-slate-200' : ''}`}
+          <button
+              onClick={onSaveProject}
+              className={desktopBtnClass}
+              title="Save Project (.engpaper)"
           >
-            <Move size={20} />
-            <span className={`${desktopLabelClass} flex items-center gap-0.5`}>
-              Graphs <ChevronDown size={8} />
-            </span>
+            <Save size={20} />
+            <span className={desktopLabelClass}>Save</span>
           </button>
-          
-          {activeDropdown === 'graphs' && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={closeDropdown} />
-              <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-lg p-1 flex flex-col gap-1 min-w-[140px] z-50">
-                <button onClick={() => handleAdd(ElementType.XY_GRAPH)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
-                  <Move size={16} /> <span className="text-sm font-medium">XY Graph</span>
-                </button>
-                <button onClick={() => handleAdd(ElementType.XY_GRAPH_1Q)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
-                  <TrendingUp size={16} /> <span className="text-sm font-medium">1Q Graph</span>
-                </button>
-              </div>
-            </>
-          )}
+
+          <div className="w-px h-8 bg-slate-300 mx-1"></div>
+
+          {/* Text Tool */}
+          <button
+              onClick={() => { if(!isMarkupMode) handleAdd(ElementType.TEXT); }}
+              disabled={isMarkupMode}
+              className={desktopBtnClass}
+          >
+            <Type size={20} />
+            <span className={desktopLabelClass}>Text</span>
+          </button>
+
+          {/* Image Tool */}
+          <button
+              onClick={() => { if(!isMarkupMode) triggerImageUpload(); }}
+              disabled={isMarkupMode}
+              className={desktopBtnClass}
+          >
+            <ImageIcon size={20} />
+            <span className={desktopLabelClass}>Image</span>
+          </button>
+
+          <div className="w-px h-8 bg-slate-300 mx-1"></div>
+
+          {/* Shapes Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => !isMarkupMode && toggleDropdown('shapes')}
+              disabled={isMarkupMode}
+              className={`${desktopBtnClass} ${activeDropdown === 'shapes' ? 'bg-slate-200' : ''}`}
+            >
+              <Shapes size={20} />
+              <span className={`${desktopLabelClass} flex items-center gap-0.5`}>
+                Shapes <ChevronDown size={8} />
+              </span>
+            </button>
+
+            {activeDropdown === 'shapes' && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={closeDropdown} />
+                <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-lg p-1 flex flex-col gap-1 min-w-[140px] z-50">
+                  <button onClick={() => handleAdd(ElementType.RECTANGLE)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
+                    <Square size={16} /> <span className="text-sm font-medium">Box</span>
+                  </button>
+                  <button onClick={() => handleAdd(ElementType.CIRCLE)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
+                    <Circle size={16} /> <span className="text-sm font-medium">Circle</span>
+                  </button>
+                  <button onClick={() => handleAdd(ElementType.LINE)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
+                    <Minus size={16} /> <span className="text-sm font-medium">Line</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Graphs Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => !isMarkupMode && toggleDropdown('graphs')}
+              disabled={isMarkupMode}
+              className={`${desktopBtnClass} ${activeDropdown === 'graphs' ? 'bg-slate-200' : ''}`}
+            >
+              <Move size={20} />
+              <span className={`${desktopLabelClass} flex items-center gap-0.5`}>
+                Graphs <ChevronDown size={8} />
+              </span>
+            </button>
+
+            {activeDropdown === 'graphs' && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={closeDropdown} />
+                <div className="absolute top-full left-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-lg p-1 flex flex-col gap-1 min-w-[140px] z-50">
+                  <button onClick={() => handleAdd(ElementType.XY_GRAPH)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
+                    <Move size={16} /> <span className="text-sm font-medium">XY Graph</span>
+                  </button>
+                  <button onClick={() => handleAdd(ElementType.XY_GRAPH_1Q)} className="w-full flex items-center gap-3 p-2 hover:bg-slate-100 rounded text-slate-700 text-left">
+                    <TrendingUp size={16} /> <span className="text-sm font-medium">1Q Graph</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="w-px h-8 bg-slate-300 mx-1"></div>
+
+          <button
+              onClick={onToggleMarkup}
+              className={`${desktopBtnClass} ${isMarkupMode ? 'bg-orange-100 text-orange-800 hover:bg-orange-200' : ''}`}
+              title="Toggle Markup Mode"
+          >
+            <PenTool size={20} />
+            <span className={desktopLabelClass}>Draw</span>
+          </button>
         </div>
-
-        <div className="w-px h-8 bg-slate-300 mx-1 hidden sm:block"></div>
-
-        <button 
-            onClick={onToggleMarkup} 
-            className={`${desktopBtnClass} ${isMarkupMode ? 'bg-orange-100 text-orange-800 hover:bg-orange-200' : ''}`}
-            title="Toggle Markup Mode"
-        >
-          <PenTool size={20} />
-          <span className={desktopLabelClass}>Draw</span>
-        </button>
       </div>
 
       {/* Right Side: Desktop View */}
@@ -453,8 +457,17 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
             <div className="h-px bg-slate-200 my-1"></div>
 
-            <button 
-              onClick={() => handleAction(onToggleSnap)} 
+            <button
+              onClick={() => handleAction(onToggleMarkup)}
+              className={`${mobileBtnClass} ${isMarkupMode ? 'bg-orange-50 text-orange-700' : ''}`}
+              title="Toggle Markup Mode"
+            >
+              <PenTool size={20} />
+              <span className={mobileLabelClass}>Draw Mode: {isMarkupMode ? 'On' : 'Off'}</span>
+            </button>
+
+            <button
+              onClick={() => handleAction(onToggleSnap)}
               className={`${mobileBtnClass} ${snapToGrid ? 'bg-green-50 text-green-700' : ''}`}
             >
               <Grid3x3 size={20} />
