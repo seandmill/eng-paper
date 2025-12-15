@@ -81,7 +81,7 @@ const renderMarkdown = (text: string | undefined) => {
 
     return (
       <div key={i} className={className} style={style}>
-        {parsedContent.length === 0 || (parsedContent.length === 1 && parsedContent[0] === "") 
+        {!content 
           ? <br/> 
           : parsedContent}
       </div>

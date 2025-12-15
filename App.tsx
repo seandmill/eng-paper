@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { CanvasElement, ElementType, SelectionState } from './types';
+import { CanvasElement, ElementType, SelectionState, Page } from './types';
 import Toolbar from './components/Toolbar';
 import PropertyPanel from './components/PropertyPanel';
 import ElementRenderer from './components/ElementRenderer';
 import ResizeHandle from './components/ResizeHandle';
 import ZoomControls from './components/ZoomControls';
 import { exportToPdf } from './services/pdfService';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, AlertTriangle } from 'lucide-react';
 
 const PAGE_WIDTH = 794; // approx A4 width in pixels at 96 DPI (or scaled for screen)
 const PAGE_HEIGHT = 1123; 
@@ -16,7 +16,8 @@ const GRID_SIZE = 20;
 // History State Definition
 interface HistoryState {
   elements: CanvasElement[];
-  markup: string | null; // Data URL of the canvas
+  markup: Record<string, string>; // Page ID -> Data URL
+  pages: Page[];
 }
 
 function App() {
@@ -24,30 +25,88 @@ function App() {
   const [initialState] = useState(() => {
     try {
       const saved = localStorage.getItem('engineering-paper-data');
-      return saved ? JSON.parse(saved) : {};
+      if (!saved) {
+          const defaultPageId = uuidv4();
+          return {
+              elements: [],
+              pages: [{ id: defaultPageId }],
+              markupData: {},
+              scale: 1,
+              snapToGrid: false
+          };
+      }
+      
+      const parsed = JSON.parse(saved);
+      
+      // Migration: Ensure pages exist
+      let loadedPages = parsed.pages;
+      let defaultPageId = '';
+      if (!loadedPages || loadedPages.length === 0) {
+          defaultPageId = uuidv4();
+          loadedPages = [{ id: defaultPageId }];
+      } else {
+          defaultPageId = loadedPages[0].id;
+      }
+
+      // Migration: Ensure elements have pageId
+      let loadedElements = parsed.elements || [];
+      loadedElements = loadedElements.map((e: any) => e.pageId ? e : { ...e, pageId: defaultPageId });
+
+      // Migration: Convert old single-string markup to object
+      let loadedMarkup = parsed.markupData;
+      if (typeof loadedMarkup === 'string') {
+          loadedMarkup = { [defaultPageId]: loadedMarkup };
+      } else if (!loadedMarkup) {
+          loadedMarkup = {};
+      }
+
+      return {
+          elements: loadedElements,
+          pages: loadedPages,
+          markupData: loadedMarkup,
+          scale: parsed.scale,
+          snapToGrid: parsed.snapToGrid
+      };
+
     } catch (e) {
       console.error("Failed to load state", e);
-      return {};
+      const defaultPageId = uuidv4();
+      return {
+          elements: [],
+          pages: [{ id: defaultPageId }],
+          markupData: {},
+          scale: 1,
+          snapToGrid: false
+      };
     }
   });
 
-  const [elements, setElements] = useState<CanvasElement[]>(initialState.elements || []);
+  const [pages, setPages] = useState<Page[]>(initialState.pages);
+  const [elements, setElements] = useState<CanvasElement[]>(initialState.elements);
   const [selection, setSelection] = useState<SelectionState>({ id: null, isEditingText: false });
   const [scale, setScale] = useState(initialState.scale || 1);
   const [snapToGrid, setSnapToGrid] = useState(initialState.snapToGrid || false);
+  const [activePageId, setActivePageId] = useState<string>(initialState.pages[0].id);
   
   // --- Markup / Paint State ---
   const [isMarkupMode, setIsMarkupMode] = useState(false);
   const [markupTool, setMarkupTool] = useState<'pen' | 'eraser'>('pen');
   const [markupColor, setMarkupColor] = useState('#000000');
   const [markupWidth, setMarkupWidth] = useState(2);
-  const [markupData, setMarkupData] = useState<string | null>(initialState.markupData || null);
+  const [markupData, setMarkupData] = useState<Record<string, string>>(initialState.markupData || {});
 
-  const markupCanvasRef = useRef<HTMLCanvasElement>(null);
+  // --- UI State ---
+  const [showDeletePageDialog, setShowDeletePageDialog] = useState(false);
+
+  // Refs for multiple pages
+  const markupCanvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  const pageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  
   const isDrawingRef = useRef(false);
   const lastDrawPosRef = useRef<{ x: number, y: number } | null>(null);
+  const currentDrawingPageIdRef = useRef<string | null>(null);
 
-  // Undo/Redo Stacks (Updated to store full state)
+  // Undo/Redo Stacks
   const [past, setPast] = useState<HistoryState[]>([]);
   const [future, setFuture] = useState<HistoryState[]>([]);
 
@@ -68,8 +127,6 @@ function App() {
 
   // Manual Double Click detection
   const lastClickRef = useRef<{ id: string, time: number } | null>(null);
-
-  const canvasRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // --- Zoom & Pinch State ---
@@ -80,38 +137,43 @@ function App() {
     const timeoutId = setTimeout(() => {
       const data = {
         elements,
+        pages,
         scale,
         snapToGrid,
-        markupData // Save the canvas image data
+        markupData
       };
       localStorage.setItem('engineering-paper-data', JSON.stringify(data));
     }, 1000); 
 
     return () => clearTimeout(timeoutId);
-  }, [elements, scale, snapToGrid, markupData]);
+  }, [elements, pages, scale, snapToGrid, markupData]);
 
-  // --- Load Initial Markup ---
+  // --- Load Initial Markup for ALL pages ---
   useEffect(() => {
-    if (initialState.markupData && markupCanvasRef.current) {
-        const ctx = markupCanvasRef.current.getContext('2d');
-        if (ctx) {
-            const img = new Image();
-            img.onload = () => {
-                ctx.clearRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
-                ctx.drawImage(img, 0, 0);
-            };
-            img.src = initialState.markupData;
+    Object.entries(markupData).forEach(([pageId, src]) => {
+        const canvas = markupCanvasRefs.current.get(pageId);
+        if (canvas && typeof src === 'string') {
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                const img = new Image();
+                img.onload = () => {
+                    ctx.clearRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = src;
+            }
         }
-    }
-  }, [initialState.markupData]);
+    });
+  }, []); // Only run once on mount, updates handled by drawing events
 
   // --- History Helpers ---
   const getCurrentState = useCallback((): HistoryState => {
     return {
         elements: elements,
-        markup: markupData
+        markup: { ...markupData },
+        pages: pages
     };
-  }, [elements, markupData]);
+  }, [elements, markupData, pages]);
 
   const saveHistory = useCallback(() => {
     setPast(prev => [...prev, getCurrentState()]);
@@ -120,18 +182,27 @@ function App() {
 
   const restoreState = useCallback((state: HistoryState) => {
     setElements(state.elements);
+    setPages(state.pages);
     setMarkupData(state.markup);
     
-    // Restore canvas visually
-    const ctx = markupCanvasRef.current?.getContext('2d');
-    if (ctx) {
-        ctx.clearRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
-        if (state.markup) {
-            const img = new Image();
-            img.onload = () => ctx.drawImage(img, 0, 0);
-            img.src = state.markup;
-        }
-    }
+    // Restore canvases visually
+    requestAnimationFrame(() => {
+        state.pages.forEach(page => {
+            const canvas = markupCanvasRefs.current.get(page.id);
+            const src = state.markup[page.id];
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    ctx.clearRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+                    if (typeof src === 'string') {
+                        const img = new Image();
+                        img.onload = () => ctx.drawImage(img, 0, 0);
+                        img.src = src;
+                    }
+                }
+            }
+        });
+    });
   }, []);
 
   const handleUndo = useCallback(() => {
@@ -162,6 +233,46 @@ function App() {
 
   // --- Handlers ---
 
+  const handleAddPage = () => {
+      saveHistory();
+      const newPageId = uuidv4();
+      setPages([...pages, { id: newPageId }]);
+      setActivePageId(newPageId);
+      // Scroll to new page?
+      setTimeout(() => {
+          const el = pageRefs.current.get(newPageId);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+  };
+
+  const confirmRemovePage = () => {
+      if (pages.length <= 1) return;
+
+      saveHistory();
+      
+      const pageToRemove = activePageId;
+      const index = pages.findIndex(p => p.id === pageToRemove);
+      const newPages = pages.filter(p => p.id !== pageToRemove);
+      const newActiveId = newPages[Math.max(0, index - 1)].id;
+      
+      setPages(newPages);
+      setActivePageId(newActiveId);
+      
+      // Cleanup elements and markup
+      setElements(prev => prev.filter(el => el.pageId !== pageToRemove));
+      setMarkupData(prev => {
+          const next = { ...prev };
+          delete next[pageToRemove];
+          return next;
+      });
+      setShowDeletePageDialog(false);
+  };
+
+  const handleRemovePageTrigger = () => {
+      if (pages.length <= 1) return;
+      setShowDeletePageDialog(true);
+  };
+
   const handleAddElement = (type: ElementType) => {
     if (isMarkupMode) return;
     saveHistory(); 
@@ -181,6 +292,7 @@ function App() {
 
     const newElement: CanvasElement = {
       id,
+      pageId: activePageId,
       type,
       ...defaults,
       content: type === ElementType.TEXT ? 'Text Box' : undefined,
@@ -203,6 +315,7 @@ function App() {
     const id = uuidv4();
     const newElement: CanvasElement = {
       id,
+      pageId: activePageId,
       type: ElementType.IMAGE,
       x: 100,
       y: 100,
@@ -240,14 +353,16 @@ function App() {
 
   const handleExport = () => {
     setSelection({ id: null, isEditingText: false });
-    // Temporary disable markup mode for clean view (optional, but good for UX)
+    // Temporary disable markup mode for clean view
     const wasMarkup = isMarkupMode;
     if(wasMarkup) setIsMarkupMode(false);
 
     const previousScale = scale;
     setScale(1);
+    
+    // Slight delay to allow render update
     setTimeout(() => {
-        exportToPdf('engineering-paper-canvas')
+        exportToPdf(pages)
             .finally(() => {
                 setScale(previousScale);
                 if(wasMarkup) setIsMarkupMode(true);
@@ -261,28 +376,32 @@ function App() {
 
   // --- Markup Logic ---
 
-  const getCanvasCoords = (e: React.PointerEvent) => {
-      if (!canvasRef.current) return { x: 0, y: 0 };
-      const rect = canvasRef.current.getBoundingClientRect();
+  const getCanvasCoords = (e: React.PointerEvent, pageId: string) => {
+      const canvas = markupCanvasRefs.current.get(pageId);
+      if (!canvas) return { x: 0, y: 0 };
+      const rect = canvas.getBoundingClientRect();
       return {
           x: (e.clientX - rect.left) / scale,
           y: (e.clientY - rect.top) / scale
       };
   };
 
-  const handlePointerDownMarkup = (e: React.PointerEvent) => {
-      if (!isMarkupMode || !markupCanvasRef.current) return;
-      e.stopPropagation(); // Prevent drag scrolling
+  const handlePointerDownMarkup = (e: React.PointerEvent, pageId: string) => {
+      if (!isMarkupMode) return;
+      e.stopPropagation();
       e.preventDefault();
 
-      // Save state before drawing starts
+      setActivePageId(pageId);
       historySnapshot.current = getCurrentState();
+      currentDrawingPageIdRef.current = pageId;
 
-      const ctx = markupCanvasRef.current.getContext('2d');
+      const canvas = markupCanvasRefs.current.get(pageId);
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
       isDrawingRef.current = true;
-      const coords = getCanvasCoords(e);
+      const coords = getCanvasCoords(e, pageId);
       lastDrawPosRef.current = coords;
 
       ctx.beginPath();
@@ -300,16 +419,20 @@ function App() {
   };
 
   const handlePointerMoveMarkup = (e: React.PointerEvent) => {
-      if (!isDrawingRef.current || !markupCanvasRef.current || !lastDrawPosRef.current) return;
+      if (!isDrawingRef.current || !lastDrawPosRef.current || !currentDrawingPageIdRef.current) return;
+      
+      const pageId = currentDrawingPageIdRef.current;
+      const canvas = markupCanvasRefs.current.get(pageId);
+      if (!canvas) return;
+
       e.stopPropagation();
       e.preventDefault();
 
-      const ctx = markupCanvasRef.current.getContext('2d');
+      const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const coords = getCanvasCoords(e);
+      const coords = getCanvasCoords(e, pageId);
       
-      // Interpolate for smoother lines
       ctx.beginPath();
       ctx.moveTo(lastDrawPosRef.current.x, lastDrawPosRef.current.y);
       ctx.lineTo(coords.x, coords.y);
@@ -322,20 +445,29 @@ function App() {
       if (!isDrawingRef.current) return;
       isDrawingRef.current = false;
       lastDrawPosRef.current = null;
+      
+      const pageId = currentDrawingPageIdRef.current;
 
-      // Save new state
-      if (markupCanvasRef.current && historySnapshot.current) {
+      if (pageId && historySnapshot.current) {
          setPast(prev => [...prev, historySnapshot.current!]);
          setFuture([]);
-         setMarkupData(markupCanvasRef.current.toDataURL());
+         const canvas = markupCanvasRefs.current.get(pageId);
+         if (canvas) {
+             setMarkupData(prev => ({
+                 ...prev,
+                 [pageId]: canvas.toDataURL()
+             }));
+         }
       }
+      currentDrawingPageIdRef.current = null;
   };
 
-  // --- Pointer Interaction Logic (Mouse & Touch for Object Manipulation) ---
+  // --- Pointer Interaction Logic ---
 
-  const getPointerCoords = (clientX: number, clientY: number) => {
-    if (!canvasRef.current) return { x: 0, y: 0 };
-    const rect = canvasRef.current.getBoundingClientRect();
+  const getPointerCoords = (clientX: number, clientY: number, pageId: string) => {
+    const pageEl = pageRefs.current.get(pageId);
+    if (!pageEl) return { x: 0, y: 0 };
+    const rect = pageEl.getBoundingClientRect();
     return {
       x: (clientX - rect.left) / scale,
       y: (clientY - rect.top) / scale,
@@ -343,9 +475,11 @@ function App() {
   };
 
   const handlePointerDownElement = (e: React.PointerEvent, element: CanvasElement) => {
-    if (isMarkupMode) return; // Disable element interaction in markup mode
+    if (isMarkupMode) return;
 
-    // If editing text, do not intercept interactions
+    // Activate the page the element is on
+    setActivePageId(element.pageId);
+
     if (selection.isEditingText && selection.id === element.id) {
         e.stopPropagation();
         return; 
@@ -354,7 +488,6 @@ function App() {
     e.stopPropagation();
     e.preventDefault(); 
     
-    // Check for double click manually
     const now = Date.now();
     if (
       lastClickRef.current && 
@@ -375,7 +508,7 @@ function App() {
     historySnapshot.current = getCurrentState();
     dragInteractedRef.current = false;
 
-    const coords = getPointerCoords(e.clientX, e.clientY);
+    const coords = getPointerCoords(e.clientX, e.clientY, element.pageId);
     setDragState({
       isDragging: true,
       isResizing: false,
@@ -391,10 +524,12 @@ function App() {
     e.stopPropagation();
     e.preventDefault();
     
+    setActivePageId(element.pageId);
+
     historySnapshot.current = getCurrentState();
     dragInteractedRef.current = false;
 
-    const coords = getPointerCoords(e.clientX, e.clientY);
+    const coords = getPointerCoords(e.clientX, e.clientY, element.pageId);
     setDragState({
       isDragging: false,
       isRotating: false,
@@ -410,10 +545,12 @@ function App() {
     e.stopPropagation();
     e.preventDefault();
     
+    setActivePageId(element.pageId);
+
     historySnapshot.current = getCurrentState();
     dragInteractedRef.current = false;
 
-    const coords = getPointerCoords(e.clientX, e.clientY);
+    const coords = getPointerCoords(e.clientX, e.clientY, element.pageId);
     setDragState({
       isDragging: false,
       isResizing: false,
@@ -442,12 +579,13 @@ function App() {
       if (!dragState || !selection.id) return;
       e.preventDefault(); 
       
-      dragInteractedRef.current = true; // Mark as interacted
-
-      const coords = getPointerCoords(e.clientX, e.clientY);
+      dragInteractedRef.current = true;
+      
+      const initial = dragState.initialElement!;
+      const coords = getPointerCoords(e.clientX, e.clientY, initial.pageId);
+      
       const deltaX = coords.x - dragState.startX;
       const deltaY = coords.y - dragState.startY;
-      const initial = dragState.initialElement!;
       
       const snap = (value: number) => snapToGrid ? Math.round(value / GRID_SIZE) * GRID_SIZE : value;
 
@@ -472,30 +610,22 @@ function App() {
         const MIN_SIZE = snapToGrid ? GRID_SIZE : 20;
 
         switch (dragState.resizeHandle) {
-          case 'se':
-             dW = localDelta.x; dH = localDelta.y;
-             if (initial.width + dW < MIN_SIZE) dW = MIN_SIZE - initial.width;
-             if (initial.height + dH < MIN_SIZE) dH = MIN_SIZE - initial.height;
-             cShiftLocalX = dW / 2; cShiftLocalY = dH / 2;
-             break;
-          case 'sw':
-             dW = -localDelta.x; dH = localDelta.y;
-             if (initial.width + dW < MIN_SIZE) dW = MIN_SIZE - initial.width;
-             if (initial.height + dH < MIN_SIZE) dH = MIN_SIZE - initial.height;
-             cShiftLocalX = -dW / 2; cShiftLocalY = dH / 2;
-             break;
-          case 'ne':
-             dW = localDelta.x; dH = -localDelta.y;
-             if (initial.width + dW < MIN_SIZE) dW = MIN_SIZE - initial.width;
-             if (initial.height + dH < MIN_SIZE) dH = MIN_SIZE - initial.height;
-             cShiftLocalX = dW / 2; cShiftLocalY = -dH / 2;
-             break;
-          case 'nw':
-             dW = -localDelta.x; dH = -localDelta.y;
-             if (initial.width + dW < MIN_SIZE) dW = MIN_SIZE - initial.width;
-             if (initial.height + dH < MIN_SIZE) dH = MIN_SIZE - initial.height;
-             cShiftLocalX = -dW / 2; cShiftLocalY = -dH / 2;
-             break;
+          case 'se': dW = localDelta.x; dH = localDelta.y; break;
+          case 'sw': dW = -localDelta.x; dH = localDelta.y; break;
+          case 'ne': dW = localDelta.x; dH = -localDelta.y; break;
+          case 'nw': dW = -localDelta.x; dH = -localDelta.y; break;
+        }
+
+        // Apply constraints
+        if (initial.width + dW < MIN_SIZE) dW = MIN_SIZE - initial.width;
+        if (initial.height + dH < MIN_SIZE) dH = MIN_SIZE - initial.height;
+        
+        // Recalculate center shift based on final dW/dH
+        switch (dragState.resizeHandle) {
+            case 'se': cShiftLocalX = dW / 2; cShiftLocalY = dH / 2; break;
+            case 'sw': cShiftLocalX = -dW / 2; cShiftLocalY = dH / 2; break;
+            case 'ne': cShiftLocalX = dW / 2; cShiftLocalY = -dH / 2; break;
+            case 'nw': cShiftLocalX = -dW / 2; cShiftLocalY = -dH / 2; break;
         }
 
         let finalW = initial.width + dW;
@@ -506,6 +636,7 @@ function App() {
             finalH = Math.round(finalH / GRID_SIZE) * GRID_SIZE;
             dW = finalW - initial.width;
             dH = finalH - initial.height;
+            // Recalc shift again for snap
             switch (dragState.resizeHandle) {
                 case 'se': cShiftLocalX = dW/2; cShiftLocalY = dH/2; break;
                 case 'sw': cShiftLocalX = -dW/2; cShiftLocalY = dH/2; break;
@@ -527,7 +658,6 @@ function App() {
     };
 
     const handlePointerUp = () => {
-      // If we finished a drag/resize/rotate interaction, commit history
       if (dragState && dragInteractedRef.current && historySnapshot.current) {
          setPast(prev => [...prev, historySnapshot.current!]);
          setFuture([]);
@@ -548,28 +678,19 @@ function App() {
     };
   }, [dragState, selection, scale, snapToGrid]);
 
-  // Keyboard Shortcuts (Undo/Redo/Delete)
+  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Undo: Ctrl+Z or Cmd+Z
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
-        if (e.shiftKey) {
-            handleRedo();
-        } else {
-            handleUndo();
-        }
+        e.shiftKey ? handleRedo() : handleUndo();
         return;
       }
-      
-      // Redo: Ctrl+Y (Windows common)
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
           e.preventDefault();
           handleRedo();
           return;
       }
-
-      // Delete
       if ((e.key === 'Delete' || e.key === 'Backspace') && selection.id && !selection.isEditingText) {
         handleDelete();
       }
@@ -578,7 +699,7 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selection, handleUndo, handleRedo, handleDelete]);
 
-  // Wheel Zoom Listener
+  // Wheel Zoom
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -623,11 +744,15 @@ function App() {
   const selectedElement = elements.find(el => el.id === selection.id) || null;
 
   const handleToggleMarkup = () => {
-      // Clear selection when entering markup mode
       if (!isMarkupMode) {
           setSelection({ id: null, isEditingText: false });
       }
       setIsMarkupMode(!isMarkupMode);
+  };
+
+  const handleBackgroundClick = (pageId: string) => {
+      setActivePageId(pageId);
+      setSelection({ id: null, isEditingText: false });
   };
 
   return (
@@ -635,6 +760,9 @@ function App() {
       <Toolbar 
         onAddElement={handleAddElement} 
         onAddImage={handleAddImage}
+        onAddPage={handleAddPage}
+        onRemovePage={handleRemovePageTrigger}
+        canRemovePage={pages.length > 1}
         onExport={handleExport} 
         onDelete={handleDelete}
         hasSelection={!!selection.id} 
@@ -663,7 +791,7 @@ function App() {
       <div className="flex flex-1 overflow-hidden relative">
         <div 
           ref={containerRef}
-          className="flex-1 overflow-auto custom-scrollbar p-8 bg-slate-200 relative"
+          className="flex-1 overflow-auto custom-scrollbar p-8 bg-slate-300 relative"
           style={{ touchAction: 'pan-x pan-y' }}
           onClick={() => setSelection({ id: null, isEditingText: false })}
           onTouchStart={handleTouchStart}
@@ -672,114 +800,146 @@ function App() {
         >
           <div style={{ 
             width: PAGE_WIDTH * scale, 
-            height: PAGE_HEIGHT * scale,
+            minHeight: (PAGE_HEIGHT * pages.length + (pages.length - 1) * 32) * scale, // Approximate height for scrolling
             position: 'relative',
             margin: '0 auto', 
+            display: 'flex',
+            flexDirection: 'column',
+            gap: `${32 * scale}px`, // Gap between pages scales with zoom
           }}>
-              <div 
-                id="engineering-paper-canvas"
-                ref={canvasRef}
-                className="relative shadow-2xl bg-[#f4f9f4] overflow-hidden origin-top-left"
-                style={{ 
-                  width: PAGE_WIDTH, 
-                  height: PAGE_HEIGHT,
-                  transform: `scale(${scale})`,
-                  backgroundImage: `
-                    linear-gradient(#88c999 1px, transparent 1px),
-                    linear-gradient(90deg, #88c999 1px, transparent 1px),
-                    linear-gradient(#88c99980 0.5px, transparent 0.5px),
-                    linear-gradient(90deg, #88c99980 0.5px, transparent 0.5px)
-                  `,
-                  backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
-                  backgroundPosition: '-1px -1px',
-                  transformStyle: 'preserve-3d', // Help with artifact issues
-                  backfaceVisibility: 'hidden',
-                  willChange: 'transform'
-                }}
-              >
-                 {/* Grid Lines & Decoration */}
-                 <div className="absolute top-0 bottom-0 left-[80px] w-0.5 bg-[#4a7a5a] z-0 pointer-events-none"></div>
-                 <div className="absolute top-[80px] left-0 right-0 h-0.5 bg-[#4a7a5a] z-0 pointer-events-none"></div>
-                 <div className="absolute top-0 h-[80px] left-[80px] right-0 border-b border-[#4a7a5a] z-0 pointer-events-none opacity-50 flex">
-                    <div className="w-1/3 border-r border-[#4a7a5a]"></div>
-                    <div className="w-1/3 border-r border-[#4a7a5a]"></div>
-                 </div>
-                 <div className="absolute left-4 top-24 w-6 h-6 rounded-full bg-slate-200/50 shadow-inner border border-slate-300 z-0"></div>
-                 <div className="absolute left-4 top-1/2 w-6 h-6 rounded-full bg-slate-200/50 shadow-inner border border-slate-300 z-0 transform -translate-y-1/2"></div>
-                 <div className="absolute left-4 bottom-24 w-6 h-6 rounded-full bg-slate-200/50 shadow-inner border border-slate-300 z-0"></div>
+              
+              {pages.map((page, index) => {
+                  const pageElements = elements.filter(el => el.pageId === page.id);
+                  const isActive = page.id === activePageId;
 
-                {/* Elements Layer */}
-                {elements.map(el => {
-                  const isSelected = selection.id === el.id;
-                  
                   return (
-                    <div
-                      key={el.id}
-                      className={`absolute group ${isSelected ? 'z-20' : 'z-10'}`}
-                      style={{
-                        left: el.x,
-                        top: el.y,
-                        width: el.width,
-                        height: el.height,
-                        transform: `rotate(${el.rotation || 0}deg)`,
-                        outline: isSelected && !selection.isEditingText && !isMarkupMode ? '1px dashed #3b82f6' : 'none',
-                        cursor: isMarkupMode ? 'default' : (selection.isEditingText ? 'text' : 'move'),
-                        touchAction: 'none',
-                        backfaceVisibility: 'hidden',
-                        WebkitFontSmoothing: 'subpixel-antialiased',
-                        willChange: isSelected ? 'transform, left, top' : 'auto'
-                      }}
-                      onPointerDown={(e) => handlePointerDownElement(e, el)}
-                      onClick={(e) => e.stopPropagation()} 
+                    <div 
+                        key={page.id}
+                        id={`engineering-paper-page-${page.id}`}
+                        ref={(el) => {
+                            if (el) pageRefs.current.set(page.id, el);
+                            else pageRefs.current.delete(page.id);
+                        }}
+                        className={`relative shadow-2xl bg-[#f4f9f4] overflow-hidden origin-top-left flex-shrink-0 transition-shadow duration-200`}
+                        style={{ 
+                            width: PAGE_WIDTH, 
+                            height: PAGE_HEIGHT,
+                            transform: `scale(${scale})`,
+                            // We don't want the pages themselves to move with transform origin, we let flex gap handle layout
+                            // but we do need to scale them. 
+                            // Trick: We scale individual pages. 
+                            // Better Trick: The parent container sets width/layout.
+                            // Actually, simpler to apply scale to the page itself via style, 
+                            // but flex gap needs to be adjusted.
+                            // To keep it simple like before:
+                            transformOrigin: 'top left',
+                            backgroundImage: `
+                                linear-gradient(#88c999 1px, transparent 1px),
+                                linear-gradient(90deg, #88c999 1px, transparent 1px),
+                                linear-gradient(#88c99980 0.5px, transparent 0.5px),
+                                linear-gradient(90deg, #88c99980 0.5px, transparent 0.5px)
+                            `,
+                            backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
+                            backgroundPosition: '-1px -1px',
+                            transformStyle: 'preserve-3d',
+                            backfaceVisibility: 'hidden',
+                            willChange: 'transform',
+                            boxShadow: isActive ? '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1), 0 0 0 2px #3b82f6' : undefined
+                        }}
+                        onPointerDown={() => handleBackgroundClick(page.id)}
                     >
-                      <ElementRenderer 
-                        element={el} 
-                        isEditing={isSelected && selection.isEditingText} 
-                        onTextChange={(text) => handleUpdateElement(el.id, { content: text })}
-                      />
+                        {/* Page Number / Indicator */}
+                        <div className="absolute top-2 right-4 text-[10px] font-mono text-slate-400 select-none z-0">
+                            Page {index + 1}
+                        </div>
 
-                      {isSelected && !selection.isEditingText && !isMarkupMode && (
-                        <>
-                          <ResizeHandle scale={scale} cursor="nw-resize" positionClass="-top-1.5 -left-1.5" onPointerDown={(e) => handlePointerDownResize(e, 'nw', el)} />
-                          <ResizeHandle scale={scale} cursor="ne-resize" positionClass="-top-1.5 -right-1.5" onPointerDown={(e) => handlePointerDownResize(e, 'ne', el)} />
-                          <ResizeHandle scale={scale} cursor="sw-resize" positionClass="-bottom-1.5 -left-1.5" onPointerDown={(e) => handlePointerDownResize(e, 'sw', el)} />
-                          <ResizeHandle scale={scale} cursor="se-resize" positionClass="-bottom-1.5 -right-1.5" onPointerDown={(e) => handlePointerDownResize(e, 'se', el)} />
-                          
-                          <div 
-                             className="absolute left-1/2 -top-8 w-6 h-6 bg-white border border-slate-400 rounded-full flex items-center justify-center shadow-sm -translate-x-1/2"
-                             style={{ 
-                                 cursor: 'grab', 
-                                 transform: `scale(${1/scale})`,
-                                 transformOrigin: 'center bottom',
-                                 backfaceVisibility: 'hidden'
-                             }}
-                             onPointerDown={(e) => handlePointerDownRotate(e, el)}
-                          >
-                            <RotateCcw size={14} className="text-slate-600" />
-                          </div>
-                          <div className="absolute left-1/2 -top-5 w-px h-3.5 bg-slate-400 -translate-x-1/2" style={{ transform: `scaleY(${1/scale})`, transformOrigin: 'bottom' }}></div>
-                        </>
-                      )}
+                        {/* Grid Lines & Decoration */}
+                        <div className="absolute top-0 bottom-0 left-[80px] w-0.5 bg-[#4a7a5a] z-0 pointer-events-none"></div>
+                        <div className="absolute top-[80px] left-0 right-0 h-0.5 bg-[#4a7a5a] z-0 pointer-events-none"></div>
+                        <div className="absolute top-0 h-[80px] left-[80px] right-0 border-b border-[#4a7a5a] z-0 pointer-events-none opacity-50 flex">
+                            <div className="w-1/3 border-r border-[#4a7a5a]"></div>
+                            <div className="w-1/3 border-r border-[#4a7a5a]"></div>
+                        </div>
+                        <div className="absolute left-4 top-24 w-6 h-6 rounded-full bg-slate-200/50 shadow-inner border border-slate-300 z-0"></div>
+                        <div className="absolute left-4 top-1/2 w-6 h-6 rounded-full bg-slate-200/50 shadow-inner border border-slate-300 z-0 transform -translate-y-1/2"></div>
+                        <div className="absolute left-4 bottom-24 w-6 h-6 rounded-full bg-slate-200/50 shadow-inner border border-slate-300 z-0"></div>
+
+                        {/* Elements Layer */}
+                        {pageElements.map(el => {
+                            const isSelected = selection.id === el.id;
+                            return (
+                                <div
+                                key={el.id}
+                                className={`absolute group ${isSelected ? 'z-20' : 'z-10'}`}
+                                style={{
+                                    left: el.x,
+                                    top: el.y,
+                                    width: el.width,
+                                    height: el.height,
+                                    transform: `rotate(${el.rotation || 0}deg)`,
+                                    outline: isSelected && !selection.isEditingText && !isMarkupMode ? '1px dashed #3b82f6' : 'none',
+                                    cursor: isMarkupMode ? 'default' : (selection.isEditingText ? 'text' : 'move'),
+                                    touchAction: 'none',
+                                    backfaceVisibility: 'hidden',
+                                    willChange: isSelected ? 'transform, left, top' : 'auto'
+                                }}
+                                onPointerDown={(e) => handlePointerDownElement(e, el)}
+                                onClick={(e) => e.stopPropagation()} 
+                                >
+                                <ElementRenderer 
+                                    element={el} 
+                                    isEditing={isSelected && selection.isEditingText} 
+                                    onTextChange={(text) => handleUpdateElement(el.id, { content: text })}
+                                />
+
+                                {isSelected && !selection.isEditingText && !isMarkupMode && (
+                                    <>
+                                    <ResizeHandle scale={scale} cursor="nw-resize" positionClass="-top-1.5 -left-1.5" onPointerDown={(e) => handlePointerDownResize(e, 'nw', el)} />
+                                    <ResizeHandle scale={scale} cursor="ne-resize" positionClass="-top-1.5 -right-1.5" onPointerDown={(e) => handlePointerDownResize(e, 'ne', el)} />
+                                    <ResizeHandle scale={scale} cursor="sw-resize" positionClass="-bottom-1.5 -left-1.5" onPointerDown={(e) => handlePointerDownResize(e, 'sw', el)} />
+                                    <ResizeHandle scale={scale} cursor="se-resize" positionClass="-bottom-1.5 -right-1.5" onPointerDown={(e) => handlePointerDownResize(e, 'se', el)} />
+                                    
+                                    <div 
+                                        className="absolute left-1/2 -top-8 w-6 h-6 bg-white border border-slate-400 rounded-full flex items-center justify-center shadow-sm -translate-x-1/2"
+                                        style={{ 
+                                            cursor: 'grab', 
+                                            transform: `scale(${1/scale})`,
+                                            transformOrigin: 'center bottom',
+                                            backfaceVisibility: 'hidden'
+                                        }}
+                                        onPointerDown={(e) => handlePointerDownRotate(e, el)}
+                                    >
+                                        <RotateCcw size={14} className="text-slate-600" />
+                                    </div>
+                                    <div className="absolute left-1/2 -top-5 w-px h-3.5 bg-slate-400 -translate-x-1/2" style={{ transform: `scaleY(${1/scale})`, transformOrigin: 'bottom' }}></div>
+                                    </>
+                                )}
+                                </div>
+                            );
+                        })}
+
+                        {/* Markup Layer - One per page */}
+                        <canvas
+                            ref={(el) => {
+                                if (el) markupCanvasRefs.current.set(page.id, el);
+                                else markupCanvasRefs.current.delete(page.id);
+                            }}
+                            width={PAGE_WIDTH}
+                            height={PAGE_HEIGHT}
+                            className="absolute top-0 left-0 z-30 touch-none"
+                            style={{ 
+                                pointerEvents: isMarkupMode ? 'auto' : 'none',
+                                cursor: isMarkupMode ? (markupTool === 'eraser' ? 'crosshair' : 'crosshair') : 'default'
+                            }}
+                            onPointerDown={(e) => handlePointerDownMarkup(e, page.id)}
+                            onPointerMove={handlePointerMoveMarkup}
+                            onPointerUp={handlePointerUpMarkup}
+                            onPointerLeave={handlePointerUpMarkup}
+                        />
                     </div>
                   );
-                })}
-
-                {/* Markup Layer - Always on Top */}
-                <canvas
-                    ref={markupCanvasRef}
-                    width={PAGE_WIDTH}
-                    height={PAGE_HEIGHT}
-                    className="absolute top-0 left-0 z-30 touch-none"
-                    style={{ 
-                        pointerEvents: isMarkupMode ? 'auto' : 'none',
-                        cursor: isMarkupMode ? (markupTool === 'eraser' ? 'crosshair' : 'crosshair') : 'default'
-                    }}
-                    onPointerDown={handlePointerDownMarkup}
-                    onPointerMove={handlePointerMoveMarkup}
-                    onPointerUp={handlePointerUpMarkup}
-                    onPointerLeave={handlePointerUpMarkup}
-                />
-              </div>
+              })}
+              
           </div>
           
         </div>
@@ -791,6 +951,45 @@ function App() {
               onZoomOut={handleZoomOut} 
               onReset={handleResetZoom}
         />
+
+        {/* Delete Confirmation Modal */}
+        {showDeletePageDialog && (
+          <div 
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowDeletePageDialog(false)}
+          >
+            <div 
+              className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4 border border-slate-200 animate-[fadeIn_0.2s_ease-out]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="text-red-600" size={20} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Delete Page?</h3>
+              </div>
+              
+              <p className="text-slate-600 mb-6 text-sm leading-relaxed">
+                Are you sure you want to delete this page? All content on this page, including text, shapes, and drawings, will be permanently removed. This action cannot be undone.
+              </p>
+              
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => setShowDeletePageDialog(false)} 
+                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmRemovePage} 
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md shadow-sm transition-colors"
+                >
+                  Delete Page
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

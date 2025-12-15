@@ -1,33 +1,45 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Page } from '../types';
 
-export const exportToPdf = async (elementId: string, fileName: string = 'engineering-notes.pdf') => {
-  const element = document.getElementById(elementId);
-  if (!element) return;
+export const exportToPdf = async (pages: Page[], fileName: string = 'engineering-notes.pdf') => {
+  if (pages.length === 0) return;
+
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
 
   try {
-    // Increase scale for better quality
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#f4f9f4', // Match the paper background
-    });
+    for (let i = 0; i < pages.length; i++) {
+      const page = pages[i];
+      const element = document.getElementById(`engineering-paper-page-${page.id}`);
+      
+      if (!element) continue;
 
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      // Add new page for subsequent iterations
+      if (i > 0) {
+        pdf.addPage();
+      }
+
+      // Increase scale for better quality
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#f4f9f4', // Match the paper background
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      
+      const imgProps = pdf.getImageProperties(imgData);
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    }
     
-    // A4 dimensions in mm
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-    });
-
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
     pdf.save(fileName);
   } catch (error) {
     console.error('Failed to export PDF', error);

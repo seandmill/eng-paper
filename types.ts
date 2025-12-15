@@ -10,6 +10,7 @@ export enum ElementType {
 
 export interface CanvasElement {
   id: string;
+  pageId: string; // Links element to a specific page
   type: ElementType;
   x: number;
   y: number;
@@ -40,3 +41,7 @@ export type SelectionState = {
   id: string | null;
   isEditingText: boolean;
 };
+
+export interface Page {
+  id: string;
+}

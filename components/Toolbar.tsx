@@ -16,13 +16,18 @@ import {
   TrendingUp,
   Shapes,
   ChevronDown,
-  Image as ImageIcon
+  Image as ImageIcon,
+  FilePlus,
+  FileMinus
 } from 'lucide-react';
 import { ElementType } from '../types';
 
 interface ToolbarProps {
   onAddElement: (type: ElementType) => void;
   onAddImage: (src: string, width: number, height: number) => void;
+  onAddPage: () => void;
+  onRemovePage: () => void;
+  canRemovePage: boolean;
   onExport: () => void;
   onDelete: () => void;
   hasSelection: boolean;
@@ -39,6 +44,9 @@ interface ToolbarProps {
 const Toolbar: React.FC<ToolbarProps> = ({ 
   onAddElement, 
   onAddImage,
+  onAddPage,
+  onRemovePage,
+  canRemovePage,
   onExport, 
   onDelete, 
   hasSelection,
@@ -222,6 +230,30 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
       {/* Right Side: Desktop View */}
       <div className="hidden md:flex items-center gap-4">
+        
+        {/* Page Controls */}
+        <div className="flex items-center gap-1">
+             <button 
+              onClick={onAddPage} 
+              className={desktopBtnClass}
+              title="Add Page"
+            >
+              <FilePlus size={20} />
+              <span className={desktopLabelClass}>Add Page</span>
+            </button>
+            <button 
+              onClick={onRemovePage} 
+              disabled={!canRemovePage}
+              className={`${desktopBtnClass} hover:text-red-600`}
+              title="Remove Page"
+            >
+              <FileMinus size={20} />
+              <span className={desktopLabelClass}>Del Page</span>
+            </button>
+        </div>
+
+        <div className="w-px h-8 bg-slate-300"></div>
+
         <button 
           onClick={onUndo} 
           disabled={!canUndo}
@@ -306,6 +338,17 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 <span className={mobileLabelClass}>Redo</span>
               </button>
             </div>
+
+            <button onClick={() => handleAction(onAddPage)} className={mobileBtnClass}>
+               <FilePlus size={20} /> <span className={mobileLabelClass}>Add Page</span>
+            </button>
+            {canRemovePage && (
+                <button onClick={() => handleAction(onRemovePage)} className={`${mobileBtnClass} text-red-600 hover:bg-red-50`}>
+                <FileMinus size={20} /> <span className={mobileLabelClass}>Remove Page</span>
+                </button>
+            )}
+
+            <div className="h-px bg-slate-200 my-1"></div>
 
             <button onClick={() => handleAction(() => onAddElement(ElementType.TEXT))} className={mobileBtnClass}>
                <Type size={20} /> <span className={mobileLabelClass}>Add Text</span>
