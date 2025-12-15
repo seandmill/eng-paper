@@ -9,7 +9,7 @@ import ResizeHandle from './components/ResizeHandle';
 import ZoomControls from './components/ZoomControls';
 import FloatingToolsButton from './components/FloatingToolsButton';
 import { exportToPdf } from './services/pdfService';
-import { RotateCcw, AlertTriangle } from 'lucide-react';
+import { RotateCcw, AlertTriangle, Share2, Check } from 'lucide-react';
 
 const PAGE_WIDTH = 794; // approx A4 width in pixels at 96 DPI (or scaled for screen)
 const PAGE_HEIGHT = 1123; 
@@ -103,6 +103,8 @@ function App() {
 
   // --- UI State ---
   const [showDeletePageDialog, setShowDeletePageDialog] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
 
   // Refs for multiple pages
   const markupCanvasRefs = useRef<Map<string, HTMLCanvasElement>>(new Map());
@@ -379,6 +381,9 @@ function App() {
 
   const handleShareProject = () => {
       try {
+          // Filter out image elements for safety and performance
+          const elementsWithoutImages = elements.filter(el => el.type !== ElementType.IMAGE);
+
           const project: ProjectFile = {
               version: "1.0",
               metadata: {
@@ -387,8 +392,8 @@ function App() {
                   lastModified: Date.now()
               },
               pages,
-              elements,
-              markupData,
+              elements: elementsWithoutImages,
+              markupData, // Keep markup/drawings
               snapToGrid,
               scale
           };
@@ -399,19 +404,35 @@ function App() {
 
           // Create shareable URL
           const baseUrl = window.location.origin + window.location.pathname;
-          const shareUrl = `${baseUrl}#shared=${compressed}`;
+          const url = `${baseUrl}#shared=${compressed}`;
 
-          // Copy to clipboard
-          navigator.clipboard.writeText(shareUrl).then(() => {
-              alert('Share link copied to clipboard! Anyone with this link can open a copy of your project.');
-          }).catch(() => {
-              // Fallback if clipboard API fails
-              prompt('Copy this link to share your project:', shareUrl);
+          // Auto-copy to clipboard
+          navigator.clipboard.writeText(url).catch(() => {
+              console.log('Clipboard access failed, user can still copy manually');
           });
+
+          // Show modal with the link
+          setShareUrl(url);
+          setShowShareModal(true);
       } catch (err) {
           console.error('Failed to create share link:', err);
           alert('Failed to create share link. The project might be too large.');
       }
+  };
+
+  const handleCopyShareLink = () => {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+          // Visual feedback - could add a toast later
+          const button = document.getElementById('copy-share-btn');
+          if (button) {
+              button.textContent = 'Copied!';
+              setTimeout(() => {
+                  button.textContent = 'Copy Link';
+              }, 2000);
+          }
+      }).catch(() => {
+          alert('Failed to copy. Please copy manually.');
+      });
   };
 
   // --- Handlers ---
@@ -1192,6 +1213,51 @@ function App() {
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md shadow-sm transition-colors"
                 >
                   Delete Page
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Share Link Modal */}
+        {showShareModal && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowShareModal(false)}
+          >
+            <div
+              className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4 border border-slate-200 animate-[fadeIn_0.2s_ease-out]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                  <Share2 className="text-green-600" size={20} />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Share Project</h3>
+              </div>
+
+              <p className="text-slate-600 mb-4 text-sm leading-relaxed">
+                Anyone with this link can open a copy of your project. <strong>Note:</strong> Images are not included in shared links for privacy and performance.
+              </p>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-md p-3 mb-4 break-all text-xs font-mono text-slate-700 max-h-32 overflow-y-auto">
+                {shareUrl}
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  id="copy-share-btn"
+                  onClick={handleCopyShareLink}
+                  className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm transition-colors flex items-center gap-2"
+                >
+                  <Check size={16} />
+                  Copy Link
                 </button>
               </div>
             </div>
