@@ -1053,8 +1053,8 @@ function App() {
                             backgroundImage: `
                                 linear-gradient(#88c999 1px, transparent 1px),
                                 linear-gradient(90deg, #88c999 1px, transparent 1px),
-                                linear-gradient(#88c99980 0.5px, transparent 0.5px),
-                                linear-gradient(90deg, #88c99980 0.5px, transparent 0.5px)
+                                linear-gradient(#88c99980 1px, transparent 1px),
+                                linear-gradient(90deg, #88c99980 1px, transparent 1px)
                             `,
                             backgroundSize: '100px 100px, 100px 100px, 20px 20px, 20px 20px',
                             backgroundPosition: '-1px -1px',

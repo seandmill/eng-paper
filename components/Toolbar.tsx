@@ -332,18 +332,20 @@ const Toolbar: React.FC<ToolbarProps> = ({
         <button
           onClick={onUndo}
           disabled={!canUndo}
-          className="p-2 rounded hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed text-slate-700"
-          title="Undo (Ctrl+Z)"
+          className={desktopBtnClass}
+          title="Undo"
         >
           <Undo2 size={20} />
+          <span className={desktopLabelClass}>Undo</span>
         </button>
         <button
           onClick={onRedo}
           disabled={!canRedo}
-          className="p-2 rounded hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed text-slate-700"
-          title="Redo (Ctrl+Y)"
+          className={desktopBtnClass}
+          title="Redo"
         >
           <Redo2 size={20} />
+          <span className={desktopLabelClass}>Redo</span>
         </button>
 
         <div className="hidden lg:block w-px h-8 bg-slate-300"></div>
