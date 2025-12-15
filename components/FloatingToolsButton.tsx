@@ -108,7 +108,7 @@ const FloatingToolsButton: React.FC<FloatingToolsButtonProps> = ({
         type="file"
         ref={projectInputRef}
         onChange={handleProjectLoad}
-        accept=".engpaper,.json"
+        accept=".engpaper.json,.engpaper,.json"
         hidden
       />
 

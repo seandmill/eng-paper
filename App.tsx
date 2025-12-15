@@ -258,8 +258,8 @@ function App() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      // Use .engpaper extension, or .json if preferred
-      link.download = `${fileName.trim() || "project"}.engpaper`;
+      // Use .engpaper.json extension for iOS compatibility
+      link.download = `${fileName.trim() || "project"}.engpaper.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -290,7 +290,7 @@ function App() {
                   setFileName(project.metadata.fileName);
               } else {
                   // Fallback for older files or if metadata missing
-                  setFileName(file.name.replace('.engpaper', '').replace('.json', ''));
+                  setFileName(file.name.replace('.engpaper.json', '').replace('.engpaper', '').replace('.json', ''));
               }
               
               // Reset Selection

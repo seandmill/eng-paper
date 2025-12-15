@@ -150,12 +150,12 @@ const Toolbar: React.FC<ToolbarProps> = ({
         accept="image/*" 
         hidden 
       />
-      <input 
-        type="file" 
-        ref={projectInputRef} 
-        onChange={handleProjectLoad} 
-        accept=".engpaper,.json" 
-        hidden 
+      <input
+        type="file"
+        ref={projectInputRef}
+        onChange={handleProjectLoad}
+        accept=".engpaper.json,.engpaper,.json"
+        hidden
       />
 
       {/* Left Side: Logo + File Controls */}
