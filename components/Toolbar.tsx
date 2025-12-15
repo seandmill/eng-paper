@@ -24,6 +24,7 @@ import {
   Share2
 } from 'lucide-react';
 import { ElementType } from '../types';
+import logoImage from '../assets/images/eng_paper_logo.png';
 
 interface ToolbarProps {
   onAddElement: (type: ElementType) => void;
@@ -165,7 +166,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       <div className="flex items-center gap-2">
         {/* Logo + Title */}
         <div className="flex items-center gap-2 pr-2 lg:pr-4 lg:border-r lg:border-slate-300 lg:mr-2">
-          <img src="assets/images/eng_paper_logo.png" alt="Eng.Paper" className="w-8 h-8 rounded-sm" />
+          <img src={logoImage} alt="Eng.Paper" className="w-8 h-8 rounded-sm" />
           <input
             type="text"
             value={fileName}
