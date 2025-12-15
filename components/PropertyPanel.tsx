@@ -192,24 +192,28 @@ const PropertyPanel: React.FC<PropertyPanelProps> = ({
       )}
 
       {/* Common Visible: Fill, Stroke, Width */}
-      <ColorPicker 
-          label="Fill" 
-          value={element.backgroundColor} 
-          onChange={(c) => onChange({ backgroundColor: c })}
-          allowTransparent={true}
-      />
+      {element.type !== ElementType.IMAGE && (
+        <>
+            <ColorPicker 
+                label="Fill" 
+                value={element.backgroundColor} 
+                onChange={(c) => onChange({ backgroundColor: c })}
+                allowTransparent={true}
+            />
 
-      <div className="w-px h-8 bg-slate-200 flex-shrink-0"></div>
+            <div className="w-px h-8 bg-slate-200 flex-shrink-0"></div>
+        </>
+      )}
 
       <ColorPicker 
-          label="Stroke" 
+          label={element.type === ElementType.IMAGE ? "Border" : "Stroke"} 
           value={element.borderColor} 
           onChange={(c) => onChange({ borderColor: c })}
           allowTransparent={true}
       />
 
        <div className="flex flex-col gap-0.5 w-16 flex-shrink-0">
-            <span className="text-[8px] text-slate-400 font-bold uppercase">Width: {element.borderWidth}px</span>
+            <span className="text-[8px] text-slate-400 font-bold uppercase">{element.type === ElementType.IMAGE ? "Border" : "Width"}: {element.borderWidth}px</span>
             <input 
               type="range" 
               min="0" max="10" 

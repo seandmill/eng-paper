@@ -128,6 +128,24 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({ element, isEditing, o
             />
         </div>
       );
+      
+    case ElementType.IMAGE:
+      return (
+        <div style={{ ...commonStyle, borderStyle: element.borderWidth ? 'solid' : 'none', overflow: 'hidden' }}>
+            <img 
+                src={element.src} 
+                alt="User Content"
+                style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'fill',
+                    pointerEvents: 'none', // Allow clicks to pass through to the container
+                    userSelect: 'none'
+                }}
+                draggable={false}
+            />
+        </div>
+      );
 
     case ElementType.XY_GRAPH: {
         const midX = element.width / 2;

@@ -196,6 +196,29 @@ function App() {
     setSelection({ id, isEditingText: false });
   };
 
+  const handleAddImage = (src: string, width: number, height: number) => {
+    if (isMarkupMode) return;
+    saveHistory();
+
+    const id = uuidv4();
+    const newElement: CanvasElement = {
+      id,
+      type: ElementType.IMAGE,
+      x: 100,
+      y: 100,
+      width: width,
+      height: height,
+      rotation: 0,
+      src: src,
+      opacity: 1,
+      borderColor: 'transparent',
+      borderWidth: 0,
+    };
+
+    setElements([...elements, newElement]);
+    setSelection({ id, isEditingText: false });
+  };
+
   const handleUpdateElement = (id: string, updates: Partial<CanvasElement>) => {
     setElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
   };
@@ -611,6 +634,7 @@ function App() {
     <div className="flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] overflow-hidden bg-slate-200 select-none">
       <Toolbar 
         onAddElement={handleAddElement} 
+        onAddImage={handleAddImage}
         onExport={handleExport} 
         onDelete={handleDelete}
         hasSelection={!!selection.id} 

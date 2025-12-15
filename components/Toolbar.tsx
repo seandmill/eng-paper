@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Type, 
   Square, 
@@ -15,12 +15,14 @@ import {
   Move,
   TrendingUp,
   Shapes,
-  ChevronDown
+  ChevronDown,
+  Image as ImageIcon
 } from 'lucide-react';
 import { ElementType } from '../types';
 
 interface ToolbarProps {
   onAddElement: (type: ElementType) => void;
+  onAddImage: (src: string, width: number, height: number) => void;
   onExport: () => void;
   onDelete: () => void;
   hasSelection: boolean;
@@ -36,6 +38,7 @@ interface ToolbarProps {
 
 const Toolbar: React.FC<ToolbarProps> = ({ 
   onAddElement, 
+  onAddImage,
   onExport, 
   onDelete, 
   hasSelection,
@@ -50,6 +53,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<'shapes' | 'graphs' | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Desktop button style (Vertical layout)
   const desktopBtnClass = "p-2 rounded hover:bg-slate-200 transition-colors flex flex-col items-center gap-1 text-slate-700 active:bg-slate-300 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed min-w-[3rem]";
@@ -77,8 +81,43 @@ const Toolbar: React.FC<ToolbarProps> = ({
     setActiveDropdown(activeDropdown === name ? null : name);
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const src = event.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          // Default max width 300px, calculate height to maintain aspect ratio
+          const maxWidth = 300;
+          const width = Math.min(img.naturalWidth, maxWidth);
+          const height = (img.naturalHeight / img.naturalWidth) * width;
+          onAddImage(src, width, height);
+        };
+        img.src = src;
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input so same file can be selected again
+    e.target.value = '';
+    closeMenu();
+  };
+
+  const triggerImageUpload = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="h-16 bg-white border-b border-slate-300 flex items-center px-4 shadow-sm justify-between z-50 relative">
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleImageUpload} 
+        accept="image/*" 
+        hidden 
+      />
+
       {/* Left Side: Logo + Creation Tools */}
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1 pr-4 border-r border-slate-300 mr-2">
@@ -96,6 +135,16 @@ const Toolbar: React.FC<ToolbarProps> = ({
         >
           <Type size={20} />
           <span className={desktopLabelClass}>Text</span>
+        </button>
+
+        {/* Image Tool */}
+        <button 
+            onClick={() => { if(!isMarkupMode) triggerImageUpload(); }} 
+            disabled={isMarkupMode}
+            className={desktopBtnClass}
+        >
+          <ImageIcon size={20} />
+          <span className={desktopLabelClass}>Image</span>
         </button>
         
         <div className="w-px h-8 bg-slate-300 mx-1 hidden sm:block"></div>
@@ -260,6 +309,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
             <button onClick={() => handleAction(() => onAddElement(ElementType.TEXT))} className={mobileBtnClass}>
                <Type size={20} /> <span className={mobileLabelClass}>Add Text</span>
+            </button>
+            <button onClick={() => handleAction(triggerImageUpload)} className={mobileBtnClass}>
+               <ImageIcon size={20} /> <span className={mobileLabelClass}>Add Image</span>
             </button>
             <button onClick={() => handleAction(() => onAddElement(ElementType.RECTANGLE))} className={mobileBtnClass}>
                <Square size={20} /> <span className={mobileLabelClass}>Add Box</span>

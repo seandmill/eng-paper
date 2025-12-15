@@ -5,6 +5,7 @@ export enum ElementType {
   LINE = 'LINE',
   XY_GRAPH = 'XY_GRAPH',
   XY_GRAPH_1Q = 'XY_GRAPH_1Q',
+  IMAGE = 'IMAGE',
 }
 
 export interface CanvasElement {
@@ -16,6 +17,7 @@ export interface CanvasElement {
   height: number;
   rotation?: number; // Degrees
   content?: string; // For text
+  src?: string; // For images (Data URL)
   backgroundColor?: string;
   borderColor?: string;
   borderWidth?: number;
