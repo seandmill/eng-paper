@@ -161,20 +161,20 @@ const Toolbar: React.FC<ToolbarProps> = ({
       {/* Left Side: Logo + File Controls */}
       <div className="flex items-center gap-2">
         {/* Logo - Always visible */}
-        <div className="flex items-center gap-2 pr-4 border-r border-slate-300 mr-2 md:mr-0 md:border-r-0 md:pr-2">
+        <div className="flex items-center gap-2 pr-4 border-r border-slate-300 mr-2 lg:mr-0 lg:border-r-0 lg:pr-2">
           <div className="w-8 h-8 bg-green-700 rounded-sm flex items-center justify-center text-white font-serif italic text-lg font-bold">E</div>
           <input
             type="text"
             value={fileName}
             onChange={(e) => onFileNameChange(e.target.value)}
-            className="hidden lg:block w-40 text-sm font-semibold text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-green-600 outline-none bg-transparent px-1 truncate transition-colors"
+            className="hidden xl:block w-40 text-sm font-semibold text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-green-600 outline-none bg-transparent px-1 truncate transition-colors"
             placeholder="Untitled Project"
             title="Edit File Name"
           />
         </div>
 
         {/* Desktop-only toolbar buttons */}
-        <div className="hidden md:flex items-center gap-2 border-l border-slate-300 pl-2">
+        <div className="hidden lg:flex items-center gap-2 border-l border-slate-300 pl-2">
           {/* File Operations */}
           <button
               onClick={triggerProjectLoad}
@@ -291,7 +291,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       {/* Right Side: Desktop View */}
-      <div className="hidden md:flex items-center gap-4">
+      <div className="hidden lg:flex items-center gap-4">
         
         {/* Page Controls */}
         <div className="flex items-center gap-1">
@@ -365,8 +365,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       {/* Mobile Menu Toggle */}
-      <button 
-        className="md:hidden p-2 text-slate-700 hover:bg-slate-100 rounded"
+      <button
+        className="lg:hidden p-2 text-slate-700 hover:bg-slate-100 rounded"
         onClick={() => setIsMenuOpen(!isMenuOpen)}
       >
         {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
