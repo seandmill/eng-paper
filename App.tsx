@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { CanvasElement, ElementType, SelectionState, Page } from './types';
+import { CanvasElement, ElementType, SelectionState, Page, ProjectFile } from './types';
 import Toolbar from './components/Toolbar';
 import PropertyPanel from './components/PropertyPanel';
 import ElementRenderer from './components/ElementRenderer';
@@ -32,7 +32,8 @@ function App() {
               pages: [{ id: defaultPageId }],
               markupData: {},
               scale: 1,
-              snapToGrid: false
+              snapToGrid: false,
+              fileName: 'Untitled Project'
           };
       }
       
@@ -65,7 +66,8 @@ function App() {
           pages: loadedPages,
           markupData: loadedMarkup,
           scale: parsed.scale,
-          snapToGrid: parsed.snapToGrid
+          snapToGrid: parsed.snapToGrid,
+          fileName: parsed.fileName || 'Untitled Project'
       };
 
     } catch (e) {
@@ -76,7 +78,8 @@ function App() {
           pages: [{ id: defaultPageId }],
           markupData: {},
           scale: 1,
-          snapToGrid: false
+          snapToGrid: false,
+          fileName: 'Untitled Project'
       };
     }
   });
@@ -87,6 +90,7 @@ function App() {
   const [scale, setScale] = useState(initialState.scale || 1);
   const [snapToGrid, setSnapToGrid] = useState(initialState.snapToGrid || false);
   const [activePageId, setActivePageId] = useState<string>(initialState.pages[0].id);
+  const [fileName, setFileName] = useState<string>(initialState.fileName);
   
   // --- Markup / Paint State ---
   const [isMarkupMode, setIsMarkupMode] = useState(false);
@@ -140,13 +144,14 @@ function App() {
         pages,
         scale,
         snapToGrid,
-        markupData
+        markupData,
+        fileName
       };
       localStorage.setItem('engineering-paper-data', JSON.stringify(data));
     }, 1000); 
 
     return () => clearTimeout(timeoutId);
-  }, [elements, pages, scale, snapToGrid, markupData]);
+  }, [elements, pages, scale, snapToGrid, markupData, fileName]);
 
   // --- Load Initial Markup for ALL pages ---
   useEffect(() => {
@@ -230,6 +235,97 @@ function App() {
 
     restoreState(next);
   }, [future, getCurrentState, restoreState]);
+
+  // --- Project Save/Load Handlers ---
+
+  const handleSaveProject = () => {
+      const project: ProjectFile = {
+          version: "1.0",
+          metadata: {
+              fileName: fileName,
+              createdAt: Date.now(),
+              lastModified: Date.now()
+          },
+          pages,
+          elements,
+          markupData,
+          snapToGrid,
+          scale // Optional to save zoom preference
+      };
+
+      const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      // Use .engpaper extension, or .json if preferred
+      link.download = `${fileName.trim() || "project"}.engpaper`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+  };
+
+  const handleLoadProject = (file: File) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+          try {
+              const text = e.target?.result as string;
+              const project: ProjectFile = JSON.parse(text);
+
+              // Basic validation
+              if (!project.pages || !project.elements) {
+                  throw new Error("Invalid project file structure");
+              }
+
+              // Load State
+              saveHistory(); // Save current state before overwriting
+              
+              setPages(project.pages);
+              setElements(project.elements);
+              setMarkupData(project.markupData || {});
+              setSnapToGrid(project.snapToGrid ?? false);
+              
+              if(project.metadata?.fileName) {
+                  setFileName(project.metadata.fileName);
+              } else {
+                  // Fallback for older files or if metadata missing
+                  setFileName(file.name.replace('.engpaper', '').replace('.json', ''));
+              }
+              
+              // Reset Selection
+              setSelection({ id: null, isEditingText: false });
+              
+              // Set Active Page to first page
+              if(project.pages.length > 0) {
+                  setActivePageId(project.pages[0].id);
+              }
+
+              // Restore Canvas Visuals
+              // Need a slight delay or effect to ensure canvas DOM elements exist for new pages
+              setTimeout(() => {
+                  if(project.markupData) {
+                      Object.entries(project.markupData).forEach(([pageId, src]) => {
+                        const canvas = markupCanvasRefs.current.get(pageId);
+                        if (canvas && typeof src === 'string') {
+                            const ctx = canvas.getContext('2d');
+                            if (ctx) {
+                                ctx.clearRect(0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+                                const img = new Image();
+                                img.onload = () => ctx.drawImage(img, 0, 0);
+                                img.src = src;
+                            }
+                        }
+                      });
+                  }
+              }, 100);
+
+          } catch (err) {
+              console.error(err);
+              alert("Failed to load project file. It may be corrupted or invalid.");
+          }
+      };
+      reader.readAsText(file);
+  };
 
   // --- Handlers ---
 
@@ -362,7 +458,7 @@ function App() {
     
     // Slight delay to allow render update
     setTimeout(() => {
-        exportToPdf(pages)
+        exportToPdf(pages, fileName)
             .finally(() => {
                 setScale(previousScale);
                 if(wasMarkup) setIsMarkupMode(true);
@@ -774,6 +870,10 @@ function App() {
         canRedo={future.length > 0}
         isMarkupMode={isMarkupMode}
         onToggleMarkup={handleToggleMarkup}
+        onSaveProject={handleSaveProject}
+        onLoadProject={handleLoadProject}
+        fileName={fileName}
+        onFileNameChange={setFileName}
       />
 
       <PropertyPanel 

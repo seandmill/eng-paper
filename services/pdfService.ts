@@ -2,8 +2,11 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Page } from '../types';
 
-export const exportToPdf = async (pages: Page[], fileName: string = 'engineering-notes.pdf') => {
+export const exportToPdf = async (pages: Page[], fileName: string) => {
   if (pages.length === 0) return;
+
+  // Ensure extension
+  const finalName = fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`;
 
   const pdf = new jsPDF({
     orientation: 'portrait',
@@ -40,7 +43,7 @@ export const exportToPdf = async (pages: Page[], fileName: string = 'engineering
       pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
     }
     
-    pdf.save(fileName);
+    pdf.save(finalName);
   } catch (error) {
     console.error('Failed to export PDF', error);
     alert('Failed to export PDF. Please check console for details.');

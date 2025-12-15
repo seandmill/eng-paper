@@ -18,7 +18,9 @@ import {
   ChevronDown,
   Image as ImageIcon,
   FilePlus,
-  FileMinus
+  FileMinus,
+  Save,
+  FolderOpen
 } from 'lucide-react';
 import { ElementType } from '../types';
 
@@ -39,6 +41,11 @@ interface ToolbarProps {
   canRedo: boolean;
   isMarkupMode: boolean;
   onToggleMarkup: () => void;
+  // Project Management
+  onSaveProject: () => void;
+  onLoadProject: (file: File) => void;
+  fileName: string;
+  onFileNameChange: (name: string) => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({ 
@@ -57,11 +64,16 @@ const Toolbar: React.FC<ToolbarProps> = ({
   canUndo,
   canRedo,
   isMarkupMode,
-  onToggleMarkup
+  onToggleMarkup,
+  onSaveProject,
+  onLoadProject,
+  fileName,
+  onFileNameChange
 }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<'shapes' | 'graphs' | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const projectInputRef = useRef<HTMLInputElement>(null);
 
   // Desktop button style (Vertical layout)
   const desktopBtnClass = "p-2 rounded hover:bg-slate-200 transition-colors flex flex-col items-center gap-1 text-slate-700 active:bg-slate-300 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed min-w-[3rem]";
@@ -107,33 +119,79 @@ const Toolbar: React.FC<ToolbarProps> = ({
       };
       reader.readAsDataURL(file);
     }
-    // Reset input so same file can be selected again
+    // Reset input
     e.target.value = '';
     closeMenu();
   };
 
+  const handleProjectLoad = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+        onLoadProject(file);
+    }
+    e.target.value = '';
+    closeMenu();
+  }
+
   const triggerImageUpload = () => {
-    fileInputRef.current?.click();
+    imageInputRef.current?.click();
   };
+
+  const triggerProjectLoad = () => {
+      projectInputRef.current?.click();
+  }
 
   return (
     <div className="h-16 bg-white border-b border-slate-300 flex items-center px-4 shadow-sm justify-between z-50 relative">
       <input 
         type="file" 
-        ref={fileInputRef} 
+        ref={imageInputRef} 
         onChange={handleImageUpload} 
         accept="image/*" 
         hidden 
       />
+      <input 
+        type="file" 
+        ref={projectInputRef} 
+        onChange={handleProjectLoad} 
+        accept=".engpaper,.json" 
+        hidden 
+      />
 
-      {/* Left Side: Logo + Creation Tools */}
+      {/* Left Side: Logo + File Controls */}
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1 pr-4 border-r border-slate-300 mr-2">
-          <div className="font-bold text-slate-800 text-lg tracking-tight flex items-center gap-2">
-            <div className="w-8 h-8 bg-green-700 rounded-sm flex items-center justify-center text-white font-serif italic">E</div>
-            <span className="hidden sm:inline">Eng.Paper</span>
-          </div>
+        <div className="flex items-center gap-2 pr-4 border-r border-slate-300 mr-2">
+          <div className="w-8 h-8 bg-green-700 rounded-sm flex items-center justify-center text-white font-serif italic text-lg font-bold">E</div>
+          <input 
+            type="text" 
+            value={fileName}
+            onChange={(e) => onFileNameChange(e.target.value)}
+            className="hidden lg:block w-40 text-sm font-semibold text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-green-600 outline-none bg-transparent px-1 truncate transition-colors"
+            placeholder="Untitled Project"
+            title="Edit File Name"
+          />
         </div>
+
+        {/* File Operations */}
+        <button 
+            onClick={triggerProjectLoad}
+            className={desktopBtnClass}
+            title="Open Project"
+        >
+          <FolderOpen size={20} />
+          <span className={desktopLabelClass}>Open</span>
+        </button>
+
+        <button 
+            onClick={onSaveProject}
+            className={desktopBtnClass}
+            title="Save Project (.engpaper)"
+        >
+          <Save size={20} />
+          <span className={desktopLabelClass}>Save</span>
+        </button>
+
+        <div className="w-px h-8 bg-slate-300 mx-1 hidden sm:block"></div>
 
         {/* Text Tool */}
         <button 
@@ -298,7 +356,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
           className="bg-green-700 text-white px-4 py-2 rounded shadow hover:bg-green-800 flex items-center gap-2 transition-colors ml-2 h-10"
         >
           <Download size={18} />
-          <span className="font-medium text-sm">Export</span>
+          <span className={desktopLabelClass}>Export PDF</span>
         </button>
       </div>
 
@@ -318,6 +376,27 @@ const Toolbar: React.FC<ToolbarProps> = ({
           
           <div className="absolute top-16 right-0 w-64 bg-white shadow-xl border border-slate-200 z-50 flex flex-col p-2 rounded-bl-lg max-h-[80vh] overflow-y-auto">
             
+            {/* Mobile File Name */}
+            <div className="px-3 pb-2 mb-2 border-b border-slate-100">
+               <label className="text-[10px] text-slate-400 uppercase font-bold">Project Name</label>
+               <input 
+                type="text" 
+                value={fileName}
+                onChange={(e) => onFileNameChange(e.target.value)}
+                className="w-full text-base font-semibold text-slate-800 border-b border-slate-200 focus:border-green-600 outline-none bg-transparent py-1"
+                placeholder="Untitled Project"
+              />
+            </div>
+
+            <div className="flex gap-2 mb-2">
+                 <button onClick={() => handleAction(triggerProjectLoad)} className={`flex-1 ${mobileBtnClass} justify-center bg-slate-50`}>
+                   <FolderOpen size={18} /> <span className={mobileLabelClass}>Open</span>
+                </button>
+                <button onClick={() => handleAction(onSaveProject)} className={`flex-1 ${mobileBtnClass} justify-center bg-slate-50`}>
+                   <Save size={18} /> <span className={mobileLabelClass}>Save</span>
+                </button>
+            </div>
+
             <div className="flex gap-2 mb-2 pb-2 border-b border-slate-100">
                <button 
                 onClick={() => handleAction(onUndo)} 
