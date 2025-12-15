@@ -160,14 +160,14 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
       {/* Left Side: Logo + File Controls */}
       <div className="flex items-center gap-2">
-        {/* Logo - Always visible */}
-        <div className="flex items-center gap-2 pr-4 border-r border-slate-300 mr-2 lg:mr-0 lg:border-r-0 lg:pr-2">
+        {/* Logo + Title */}
+        <div className="flex items-center gap-2 pr-2 lg:pr-4 lg:border-r lg:border-slate-300 lg:mr-2">
           <div className="w-8 h-8 bg-green-700 rounded-sm flex items-center justify-center text-white font-serif italic text-lg font-bold">E</div>
           <input
             type="text"
             value={fileName}
             onChange={(e) => onFileNameChange(e.target.value)}
-            className="hidden lg:block w-40 text-sm font-semibold text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-green-600 outline-none bg-transparent px-1 truncate transition-colors"
+            className="w-32 lg:w-40 text-sm font-semibold text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-green-600 outline-none bg-transparent px-1 truncate transition-colors"
             placeholder="Untitled Project"
             title="Edit File Name"
           />
@@ -290,21 +290,21 @@ const Toolbar: React.FC<ToolbarProps> = ({
         </div>
       </div>
 
-      {/* Right Side: Desktop View */}
-      <div className="hidden lg:flex items-center gap-4">
-        
-        {/* Page Controls */}
-        <div className="flex items-center gap-1">
-             <button 
-              onClick={onAddPage} 
+      {/* Right Side */}
+      <div className="flex items-center gap-2 lg:gap-4">
+
+        {/* Page Controls - Desktop Only */}
+        <div className="hidden lg:flex items-center gap-1">
+             <button
+              onClick={onAddPage}
               className={desktopBtnClass}
               title="Add Page"
             >
               <FilePlus size={20} />
               <span className={desktopLabelClass}>Add Page</span>
             </button>
-            <button 
-              onClick={onRemovePage} 
+            <button
+              onClick={onRemovePage}
               disabled={!canRemovePage}
               className={`${desktopBtnClass} hover:text-red-600`}
               title="Remove Page"
@@ -314,185 +314,54 @@ const Toolbar: React.FC<ToolbarProps> = ({
             </button>
         </div>
 
-        <div className="w-px h-8 bg-slate-300"></div>
+        <div className="hidden lg:block w-px h-8 bg-slate-300"></div>
 
-        <button 
-          onClick={onUndo} 
+        {/* Undo/Redo - Always visible */}
+        <button
+          onClick={onUndo}
           disabled={!canUndo}
-          className={desktopBtnClass}
+          className="p-2 rounded hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed text-slate-700"
           title="Undo (Ctrl+Z)"
         >
           <Undo2 size={20} />
-          <span className={desktopLabelClass}>Undo</span>
         </button>
-        <button 
-          onClick={onRedo} 
+        <button
+          onClick={onRedo}
           disabled={!canRedo}
-          className={desktopBtnClass}
+          className="p-2 rounded hover:bg-slate-200 active:bg-slate-300 disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed text-slate-700"
           title="Redo (Ctrl+Y)"
         >
           <Redo2 size={20} />
-          <span className={desktopLabelClass}>Redo</span>
         </button>
 
-        <div className="w-px h-8 bg-slate-300"></div>
+        <div className="hidden lg:block w-px h-8 bg-slate-300"></div>
 
-        <button 
-          onClick={onToggleSnap} 
-          className={`${desktopBtnClass} ${snapToGrid ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}`}
+        <button
+          onClick={onToggleSnap}
+          className={`hidden lg:flex ${desktopBtnClass} ${snapToGrid ? 'bg-green-100 text-green-800 hover:bg-green-200' : ''}`}
           title="Toggle Snap to Grid"
         >
           <Grid3x3 size={20} />
           <span className={desktopLabelClass}>{snapToGrid ? 'On' : 'Off'}</span>
         </button>
 
-        <div className="w-px h-8 bg-slate-300"></div>
+        <div className="hidden lg:block w-px h-8 bg-slate-300"></div>
 
          {hasSelection && !isMarkupMode && (
-            <button onClick={onDelete} className={`${desktopBtnClass} text-red-600 hover:bg-red-50 hover:text-red-700`}>
+            <button onClick={onDelete} className={`hidden lg:flex ${desktopBtnClass} text-red-600 hover:bg-red-50 hover:text-red-700`}>
               <Trash2 size={20} />
               <span className={desktopLabelClass}>Delete</span>
             </button>
          )}
 
-        <button 
-          onClick={onExport} 
-          className="bg-green-700 text-white px-4 py-2 rounded shadow hover:bg-green-800 flex items-center gap-2 transition-colors ml-2 h-10"
+        <button
+          onClick={onExport}
+          className="hidden lg:flex bg-green-700 text-white px-4 py-2 rounded shadow hover:bg-green-800 items-center gap-2 transition-colors ml-2 h-10"
         >
           <Download size={18} />
           <span className={desktopLabelClass}>Export PDF</span>
         </button>
       </div>
-
-      {/* Mobile Menu Toggle */}
-      <button
-        className="lg:hidden p-2 text-slate-700 hover:bg-slate-100 rounded"
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-      >
-        {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
-      {/* Mobile Dropdown Menu */}
-      {isMenuOpen && (
-        <>
-          {/* Overlay to close menu when clicking outside */}
-          <div className="fixed inset-0 z-40 bg-transparent" onClick={closeMenu}></div>
-          
-          <div className="absolute top-16 right-0 w-64 bg-white shadow-xl border border-slate-200 z-50 flex flex-col p-2 rounded-bl-lg max-h-[80vh] overflow-y-auto">
-            
-            {/* Mobile File Name */}
-            <div className="px-3 pb-2 mb-2 border-b border-slate-100">
-               <label className="text-[10px] text-slate-400 uppercase font-bold">Project Name</label>
-               <input 
-                type="text" 
-                value={fileName}
-                onChange={(e) => onFileNameChange(e.target.value)}
-                className="w-full text-base font-semibold text-slate-800 border-b border-slate-200 focus:border-green-600 outline-none bg-transparent py-1"
-                placeholder="Untitled Project"
-              />
-            </div>
-
-            <div className="flex gap-2 mb-2">
-                 <button onClick={() => handleAction(triggerProjectLoad)} className={`flex-1 ${mobileBtnClass} justify-center bg-slate-50`}>
-                   <FolderOpen size={18} /> <span className={mobileLabelClass}>Open</span>
-                </button>
-                <button onClick={() => handleAction(onSaveProject)} className={`flex-1 ${mobileBtnClass} justify-center bg-slate-50`}>
-                   <Save size={18} /> <span className={mobileLabelClass}>Save</span>
-                </button>
-            </div>
-
-            <div className="flex gap-2 mb-2 pb-2 border-b border-slate-100">
-               <button 
-                onClick={() => handleAction(onUndo)} 
-                disabled={!canUndo}
-                className={`flex-1 ${mobileBtnClass} justify-center bg-slate-50`}
-                title="Undo"
-              >
-                <Undo2 size={20} />
-                <span className={mobileLabelClass}>Undo</span>
-              </button>
-              <button 
-                onClick={() => handleAction(onRedo)} 
-                disabled={!canRedo}
-                className={`flex-1 ${mobileBtnClass} justify-center bg-slate-50`}
-                title="Redo"
-              >
-                <Redo2 size={20} />
-                <span className={mobileLabelClass}>Redo</span>
-              </button>
-            </div>
-
-            <button onClick={() => handleAction(onAddPage)} className={mobileBtnClass}>
-               <FilePlus size={20} /> <span className={mobileLabelClass}>Add Page</span>
-            </button>
-            {canRemovePage && (
-                <button onClick={() => handleAction(onRemovePage)} className={`${mobileBtnClass} text-red-600 hover:bg-red-50`}>
-                <FileMinus size={20} /> <span className={mobileLabelClass}>Remove Page</span>
-                </button>
-            )}
-
-            <div className="h-px bg-slate-200 my-1"></div>
-
-            <button onClick={() => handleAction(() => onAddElement(ElementType.TEXT))} className={mobileBtnClass}>
-               <Type size={20} /> <span className={mobileLabelClass}>Add Text</span>
-            </button>
-            <button onClick={() => handleAction(triggerImageUpload)} className={mobileBtnClass}>
-               <ImageIcon size={20} /> <span className={mobileLabelClass}>Add Image</span>
-            </button>
-            <button onClick={() => handleAction(() => onAddElement(ElementType.RECTANGLE))} className={mobileBtnClass}>
-               <Square size={20} /> <span className={mobileLabelClass}>Add Box</span>
-            </button>
-            <button onClick={() => handleAction(() => onAddElement(ElementType.CIRCLE))} className={mobileBtnClass}>
-               <Circle size={20} /> <span className={mobileLabelClass}>Add Circle</span>
-            </button>
-            <button onClick={() => handleAction(() => onAddElement(ElementType.LINE))} className={mobileBtnClass}>
-               <Minus size={20} /> <span className={mobileLabelClass}>Add Line</span>
-            </button>
-            <button onClick={() => handleAction(() => onAddElement(ElementType.XY_GRAPH))} className={mobileBtnClass}>
-               <Move size={20} /> <span className={mobileLabelClass}>Add XY Graph</span>
-            </button>
-            <button onClick={() => handleAction(() => onAddElement(ElementType.XY_GRAPH_1Q))} className={mobileBtnClass}>
-               <TrendingUp size={20} /> <span className={mobileLabelClass}>Add 1Q Graph</span>
-            </button>
-
-            <div className="h-px bg-slate-200 my-1"></div>
-
-            <button
-              onClick={() => handleAction(onToggleMarkup)}
-              className={`${mobileBtnClass} ${isMarkupMode ? 'bg-orange-50 text-orange-700' : ''}`}
-              title="Toggle Markup Mode"
-            >
-              <PenTool size={20} />
-              <span className={mobileLabelClass}>Draw Mode: {isMarkupMode ? 'On' : 'Off'}</span>
-            </button>
-
-            <button
-              onClick={() => handleAction(onToggleSnap)}
-              className={`${mobileBtnClass} ${snapToGrid ? 'bg-green-50 text-green-700' : ''}`}
-            >
-              <Grid3x3 size={20} />
-              <span className={mobileLabelClass}>Snap to Grid: {snapToGrid ? 'On' : 'Off'}</span>
-            </button>
-
-            {hasSelection && !isMarkupMode && (
-               <button onClick={() => handleAction(onDelete)} className={`${mobileBtnClass} text-red-600 hover:bg-red-50`}>
-                 <Trash2 size={20} />
-                 <span className={mobileLabelClass}>Delete Selection</span>
-               </button>
-            )}
-
-            <div className="h-px bg-slate-200 my-1"></div>
-
-            <button 
-              onClick={() => handleAction(onExport)} 
-              className={`${mobileBtnClass} text-green-700 hover:bg-green-50`}
-            >
-              <Download size={20} />
-              <span className={mobileLabelClass}>Export as PDF</span>
-            </button>
-          </div>
-        </>
-      )}
     </div>
   );
 };

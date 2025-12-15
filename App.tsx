@@ -6,6 +6,7 @@ import PropertyPanel from './components/PropertyPanel';
 import ElementRenderer from './components/ElementRenderer';
 import ResizeHandle from './components/ResizeHandle';
 import ZoomControls from './components/ZoomControls';
+import FloatingToolsButton from './components/FloatingToolsButton';
 import { exportToPdf } from './services/pdfService';
 import { RotateCcw, AlertTriangle } from 'lucide-react';
 
@@ -1045,11 +1046,29 @@ function App() {
         </div>
         
         {/* Zoom Controls */}
-        <ZoomControls 
-              scale={scale} 
-              onZoomIn={handleZoomIn} 
-              onZoomOut={handleZoomOut} 
+        <ZoomControls
+              scale={scale}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
               onReset={handleResetZoom}
+              onAddPage={handleAddPage}
+              onRemovePage={handleRemovePageTrigger}
+              canRemovePage={pages.length > 1}
+        />
+
+        {/* Floating Tools Button - Mobile Only */}
+        <FloatingToolsButton
+              onAddElement={handleAddElement}
+              onAddImage={handleAddImage}
+              onExport={handleExport}
+              onDelete={handleDelete}
+              hasSelection={!!selection.id}
+              snapToGrid={snapToGrid}
+              onToggleSnap={() => setSnapToGrid(!snapToGrid)}
+              isMarkupMode={isMarkupMode}
+              onToggleMarkup={handleToggleMarkup}
+              onSaveProject={handleSaveProject}
+              onLoadProject={handleLoadProject}
         />
 
         {/* Delete Confirmation Modal */}
