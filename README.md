@@ -2,8 +2,11 @@
 
 **Digital engineering paper for the modern era.** Create technical drawings, sketches, calculations, and diagrams with the nostalgia of classic engineering graph paper, powered by modern web technology.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![PWA](https://img.shields.io/badge/PWA-Ready-blue.svg)](https://web.dev/progressive-web-apps/)
+
+## 🤖 100% Vibe Coded
+
+This project has been 100% vibe coded with Google AI Studio and Gemini CLI (including this readme!). It has no affiliation with, or endorsement by, Google itself.
 
 ## ✨ Features
 
@@ -125,10 +128,6 @@ Visit `http://localhost:3000`
 ## 🤝 Contributing
 
 This is a personal project, but feel free to fork and customize!
-
-## 📝 License
-
-MIT License - See [LICENSE](LICENSE) for details
 
 ## 💭 About
 
