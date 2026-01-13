@@ -4,6 +4,8 @@
 
 [![PWA](https://img.shields.io/badge/PWA-Ready-blue.svg)](https://web.dev/progressive-web-apps/)
 
+![Eng Paper Screenshot](https://assets.seanmillah.dev/eng_paper_intro.png)
+
 ## 🤖 100% Vibe Coded
 
 This project has been 100% vibe coded with Google AI Studio and Gemini CLI (including this readme!). It has no affiliation with, or endorsement by, Google itself.
